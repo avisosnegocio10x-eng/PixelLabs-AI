@@ -1,4 +1,6 @@
 const { sendMessage } = require("../services/metaService");
+const { askGemini } = require("../services/geminiService");
+const systemPrompt = require("../utils/systemPrompt");
 
 const verifyWebhook = (req, res) => {
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -38,9 +40,20 @@ const receiveMessage = async (req, res) => {
 
                         const senderId = event.sender.id;
 
+                        const userMessage = event.message.text || "";
+
+                        console.log("Cliente:", userMessage);
+
+                        const aiResponse = await askGemini(
+                            userMessage,
+                            systemPrompt
+                        );
+
+                        console.log("Gemini:", aiResponse);
+
                         await sendMessage(
                             senderId,
-                            "¡Hola! 👋 Soy el asistente virtual de PixelLabs. ¿En qué puedo ayudarte?"
+                            aiResponse
                         );
 
                     }
