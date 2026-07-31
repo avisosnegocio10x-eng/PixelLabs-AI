@@ -6,9 +6,19 @@ function crearConversacionSiNoExiste(userId) {
 
         conversations[userId] = {
 
-            messages: [],
+            id: userId,
 
-            correoEnviado: false
+            nombre: null,
+
+            plataforma: "Facebook",
+
+            iaActiva: true,
+
+            correoEnviado: false,
+
+            esperandoNombre: false,
+
+            messages: []
 
         };
 
@@ -40,6 +50,38 @@ function getConversation(userId) {
 
 }
 
+function getClient(userId) {
+
+    crearConversacionSiNoExiste(userId);
+
+    return conversations[userId];
+
+}
+
+function setClientName(userId, nombre) {
+
+    crearConversacionSiNoExiste(userId);
+
+    conversations[userId].nombre = nombre;
+
+}
+
+function estaEsperandoNombre(userId) {
+
+    crearConversacionSiNoExiste(userId);
+
+    return conversations[userId].esperandoNombre;
+
+}
+
+function setEsperandoNombre(userId, estado) {
+
+    crearConversacionSiNoExiste(userId);
+
+    conversations[userId].esperandoNombre = estado;
+
+}
+
 function correoYaEnviado(userId) {
 
     crearConversacionSiNoExiste(userId);
@@ -56,11 +98,27 @@ function marcarCorreoEnviado(userId) {
 
 }
 
+function getAllConversations() {
+
+    return conversations;
+
+}
+
 module.exports = {
 
     addMessage,
 
     getConversation,
+
+    getClient,
+
+    setClientName,
+
+    estaEsperandoNombre,
+
+    setEsperandoNombre,
+
+    getAllConversations,
 
     correoYaEnviado,
 

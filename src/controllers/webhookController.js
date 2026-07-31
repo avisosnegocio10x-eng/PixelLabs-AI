@@ -6,8 +6,20 @@ const {
     addMessage,
     getConversation,
     correoYaEnviado,
-    marcarCorreoEnviado
+    marcarCorreoEnviado,
+    estaEsperandoNombre,
+    setEsperandoNombre
 } = require("../memory/memoryManager");
+
+const {
+
+    obtenerCliente,
+
+    tieneNombre,
+
+    guardarNombre
+
+} = require("../customer/customerManager");
 
 const {
     obtenerEstadoConversacion,
@@ -71,6 +83,7 @@ const receiveMessage = async (req, res) => {
                             userMessage
                         );
 
+        
                         const conversation =
                             getConversation(senderId);
 
