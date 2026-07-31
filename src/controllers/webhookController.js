@@ -36,8 +36,10 @@ const verifyWebhook = (req, res) => {
         mode === "subscribe" &&
         token === VERIFY_TOKEN
     ) {
+
         console.log("✅ Webhook verificado correctamente.");
         return res.status(200).send(challenge);
+
     }
 
     console.log("❌ Error al verificar el webhook.");
@@ -101,7 +103,7 @@ const receiveMessage = async (req, res) => {
                         ) {
 
                             const resumen =
-                                await generarResumen(conversation);
+                                generarResumen(conversation);
 
                             console.log("");
 
@@ -114,11 +116,8 @@ const receiveMessage = async (req, res) => {
                             console.log(resumen);
 
                             await sendEmail(
-
                                 "Nuevo cliente - PixelLabs",
-
                                 resumen
-
                             );
 
                             marcarCorreoEnviado(senderId);

@@ -1,43 +1,31 @@
-const { extraerDatos } = require("../services/extractService");
+const { extraerCotizacion } = require("./quoteExtractor");
 
-async function generarResumen(conversation) {
+function generarResumen(conversation) {
 
-    const datos = await extraerDatos(conversation);
-
-    if (!datos) {
-
-        return `
-======================================
-NUEVA SOLICITUD - PIXELLABS
-======================================
-
-No fue posible extraer automáticamente la información.
-`;
-
-    }
+    const datos = extraerCotizacion(conversation);
 
     return `
-======================================
-NUEVA SOLICITUD - PIXELLABS
-======================================
+=========================
+NUEVO CLIENTE PIXELLABS
+=========================
 
 Producto:
-${datos.producto || "No especificado"}
+${datos.producto}
+
+Color:
+${datos.color}
 
 Cantidad:
-${datos.cantidad || "No especificada"}
-
-Colores:
-${datos.colores.length ? datos.colores.join(", ") : "No especificados"}
+${datos.cantidad}
 
 Medidas:
-${datos.medidas || "No especificadas"}
+${datos.medidas}
 
-Imagen:
-${datos.imagen ? "Sí" : "No"}
+Diseño desde imagen:
+${datos.imagen}
 
 Archivo STL:
-${datos.stl ? "Sí" : "No"}
+${datos.stl}
 
 Estado:
 
@@ -47,7 +35,5 @@ Listo para cotización.
 }
 
 module.exports = {
-
     generarResumen
-
 };
