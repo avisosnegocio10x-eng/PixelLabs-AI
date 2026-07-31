@@ -36,14 +36,11 @@ const verifyWebhook = (req, res) => {
         mode === "subscribe" &&
         token === VERIFY_TOKEN
     ) {
-
         console.log("✅ Webhook verificado correctamente.");
         return res.status(200).send(challenge);
-
     }
 
     console.log("❌ Error al verificar el webhook.");
-
     return res.sendStatus(403);
 
 };
@@ -104,7 +101,7 @@ const receiveMessage = async (req, res) => {
                         ) {
 
                             const resumen =
-                                generarResumen(conversation);
+                                await generarResumen(conversation);
 
                             console.log("");
 
