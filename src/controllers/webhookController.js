@@ -7,6 +7,15 @@ const {
     getConversation
 } = require("../memory/memoryManager");
 
+const {
+    obtenerEstadoConversacion,
+    obtenerCamposFaltantes
+} = require("../sales/salesManager");
+
+const {
+    generarResumen
+} = require("../sales/summaryManager");
+
 const verifyWebhook = (req, res) => {
 
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -28,7 +37,6 @@ const verifyWebhook = (req, res) => {
     }
 
     console.log("❌ Error al verificar el webhook.");
-
     return res.sendStatus(403);
 
 };
@@ -51,36 +59,55 @@ const receiveMessage = async (req, res) => {
 
                         console.log("Cliente:", userMessage);
 
-                        // Guardar mensaje del cliente
                         addMessage(
                             senderId,
                             "user",
                             userMessage
                         );
 
-                        // Obtener historial completo
                         const conversation =
                             getConversation(senderId);
 
-                        // Preguntar a Gemini usando el historial
+                        const estado =
+                            obtenerEstadoConversacion(conversation);
+
+                        const faltantes =
+                            obtenerCamposFaltantes(estado);
+
                         const aiResponse =
                             await askGemini(
                                 conversation,
                                 systemPrompt
                             );
 
-                        // Guardar respuesta del bot
                         addMessage(
                             senderId,
                             "assistant",
                             aiResponse
                         );
 
-                        // Enviar respuesta
                         await sendMessage(
                             senderId,
                             aiResponse
                         );
+
+                        if (faltantes.length === 0) {
+
+                            console.log("");
+
+                            console.log("===================================");
+
+                            console.log("CLIENTE LISTO PARA COTIZAR");
+
+                            console.log("===================================");
+
+                            console.log(
+
+                                generarResumen(conversation)
+
+                            );
+
+                        }
 
                     }
 
@@ -103,6 +130,9 @@ const receiveMessage = async (req, res) => {
 };
 
 module.exports = {
+
     verifyWebhook,
+
     receiveMessage
+
 };

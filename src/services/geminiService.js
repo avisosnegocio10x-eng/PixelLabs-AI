@@ -1,5 +1,10 @@
 const axios = require("axios");
 
+const {
+    obtenerEstadoConversacion,
+    obtenerCamposFaltantes
+} = require("../sales/salesManager");
+
 const askGemini = async (conversation, systemPrompt = "") => {
 
     try {
@@ -20,6 +25,10 @@ const askGemini = async (conversation, systemPrompt = "") => {
 
         });
 
+        const estado = obtenerEstadoConversacion(conversation);
+
+        const faltantes = obtenerCamposFaltantes(estado);
+
         const response = await axios.post(
 
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -32,20 +41,29 @@ const askGemini = async (conversation, systemPrompt = "") => {
                             {
                                 text: `${systemPrompt}
 
-HISTORIAL DE LA CONVERSACIÓN
+HISTORIAL
 
 ${history}
 
-INSTRUCCIONES IMPORTANTES
+ESTADO ACTUAL
 
-- Continúa la conversación.
-- No vuelvas a saludar si ya saludaste.
-- Recuerda todo el contexto anterior.
-- Habla como un empleado de PixelLabs.
-- Nunca inventes precios.
-- Nunca inventes servicios.
-- Si falta información para una cotización, sigue haciendo preguntas.
-- Responde siempre en español.`
+${JSON.stringify(estado, null, 2)}
+
+DATOS FALTANTES
+
+${faltantes.join(", ") || "Ninguno"}
+
+INSTRUCCIONES
+
+- Continúa la conversación sin volver a saludar.
+- Pregunta únicamente por los datos faltantes.
+- No vuelvas a preguntar datos que ya fueron proporcionados.
+- Cuando todos los datos estén completos, indícalo y menciona que un asesor continuará con la cotización.
+- Responde siempre como un empleado de PixelLabs.
+- Nunca inventes información.
+- No uses markdown (*, ** o #).
+- Responde en español.
+- Sé breve y natural.`
                             }
                         ]
                     }
@@ -59,7 +77,6 @@ INSTRUCCIONES IMPORTANTES
     } catch (error) {
 
         console.error("Error con Gemini:");
-
         console.error(
             error.response?.data || error.message
         );
