@@ -1,65 +1,72 @@
 const campos = [
-
     "producto",
-
     "archivo",
-
     "imagen",
-
     "color",
-
     "cantidad",
-
     "tamaño"
-
 ];
 
 function obtenerEstadoConversacion(conversation) {
 
     const estado = {
-
         producto: false,
-
         archivo: false,
-
         imagen: false,
-
         color: false,
-
         cantidad: false,
-
         tamaño: false
-
     };
 
     const texto = conversation
+        .filter(m => m.role === "user")
         .map(m => m.message.toLowerCase())
         .join(" ");
 
-    // Producto
-
+    // PRODUCTO
     if (
         texto.includes("llavero") ||
         texto.includes("figura") ||
         texto.includes("maceta") ||
-        texto.includes("organizador")
+        texto.includes("organizador") ||
+        texto.includes("carro") ||
+        texto.includes("auto") ||
+        texto.includes("automóvil") ||
+        texto.includes("lamborghini") ||
+        texto.includes("ferrari") ||
+        texto.includes("bmw") ||
+        texto.includes("toyota") ||
+        texto.includes("honda") ||
+        texto.includes("modelo")
     ) {
 
         estado.producto = true;
 
     }
 
-    // Archivo STL
+    // STL
 
     if (
-        texto.includes("stl")
+        texto.includes("tengo stl") ||
+        texto.includes("cuento con stl") ||
+        texto.includes("archivo stl")
     ) {
 
         estado.archivo = true;
 
     }
 
-    // Imagen
+    if (
+        texto.includes("no tengo stl") ||
+        texto.includes("sin stl") ||
+        texto.includes("solo tengo una imagen")
+    ) {
+
+        estado.archivo = false;
+
+    }
+
+    // IMAGEN
 
     if (
         texto.includes("imagen") ||
@@ -70,35 +77,31 @@ function obtenerEstadoConversacion(conversation) {
 
     }
 
-    // Colores
+    // COLOR
 
     const colores = [
-
         "negro",
-
         "blanco",
-
         "gris",
-
         "gris oscuro",
-
         "rosa",
-
         "turquesa",
-
         "verde",
-
+        "verde bambú",
         "café"
-
     ];
 
-    estado.color = colores.some(c => texto.includes(c));
+    estado.color =
+        colores.some(color => texto.includes(color));
 
-    // Cantidad
+    // CANTIDAD
 
-    estado.cantidad = /\b\d+\b/.test(texto);
+    estado.cantidad =
+        /\b\d+\b/.test(texto) ||
+        texto.includes("una unidad") ||
+        texto.includes("un llavero");
 
-    // Tamaño
+    // TAMAÑO
 
     estado.tamaño =
         texto.includes("cm");

@@ -1,6 +1,7 @@
 function extraerCotizacion(conversation) {
 
     const texto = conversation
+        .filter(msg => msg.role === "user")
         .map(msg => msg.message)
         .join(" ")
         .toLowerCase();
@@ -11,34 +12,75 @@ function extraerCotizacion(conversation) {
     const medidas =
         texto.match(/(\d+)\s*cm.*?(\d+)\s*cm/i);
 
+    const colores = [];
+
+    if (texto.includes("negro")) colores.push("Negro");
+    if (texto.includes("blanco")) colores.push("Blanco");
+    if (texto.includes("gris oscuro")) colores.push("Gris oscuro");
+    if (texto.includes("gris")) colores.push("Gris");
+    if (texto.includes("rosa")) colores.push("Rosa");
+    if (texto.includes("turquesa")) colores.push("Turquesa");
+    if (texto.includes("verde")) colores.push("Verde");
+    if (texto.includes("verde bambú")) colores.push("Verde bambú");
+    if (texto.includes("café")) colores.push("Café");
+
+    let producto = "No especificado";
+
+    if (texto.includes("llavero")) {
+
+        producto = "Llavero";
+
+    } else if (
+
+        texto.includes("carro") ||
+        texto.includes("auto") ||
+        texto.includes("automóvil") ||
+        texto.includes("lamborghini") ||
+        texto.includes("ferrari") ||
+        texto.includes("bmw") ||
+        texto.includes("honda") ||
+        texto.includes("toyota") ||
+        texto.includes("modelo")
+
+    ) {
+
+        producto = "Modelo de vehículo";
+
+    } else if (texto.includes("figura")) {
+
+        producto = "Figura";
+
+    } else if (texto.includes("maceta")) {
+
+        producto = "Maceta";
+
+    } else if (texto.includes("organizador")) {
+
+        producto = "Organizador";
+
+    }
+
+    const tieneImagen =
+        texto.includes("imagen") ||
+        texto.includes("foto");
+
+    const tieneSTL =
+
+        (texto.includes("tengo stl") ||
+        texto.includes("cuento con stl") ||
+        texto.includes("archivo stl"))
+
+        &&
+
+        !texto.includes("no tengo stl");
+
     return {
 
-        producto:
-            texto.includes("llavero")
-                ? "Llavero"
-                : texto.includes("figura")
-                ? "Figura"
-                : "No especificado",
+        producto,
 
         color:
-            texto.includes("negro")
-                ? "Negro"
-                : texto.includes("blanco")
-                ? "Blanco"
-                : texto.includes("gris oscuro")
-                ? "Gris oscuro"
-                : texto.includes("gris")
-                ? "Gris"
-                : texto.includes("rosa")
-                ? "Rosa"
-                : texto.includes("turquesa")
-                ? "Turquesa"
-                : texto.includes("verde brillante")
-                ? "Verde brillante"
-                : texto.includes("verde bambú")
-                ? "Verde bambú"
-                : texto.includes("café")
-                ? "Café"
+            colores.length
+                ? colores.join(", ")
                 : "No especificado",
 
         cantidad:
@@ -52,12 +94,12 @@ function extraerCotizacion(conversation) {
                 : "No especificadas",
 
         imagen:
-            texto.includes("imagen")
+            tieneImagen
                 ? "Sí"
                 : "No",
 
         stl:
-            texto.includes("stl")
+            tieneSTL
                 ? "Sí"
                 : "No"
 
