@@ -16,6 +16,10 @@ const {
     generarResumen
 } = require("../sales/summaryManager");
 
+const {
+    sendEmail
+} = require("../email/emailManager");
+
 const verifyWebhook = (req, res) => {
 
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -37,6 +41,7 @@ const verifyWebhook = (req, res) => {
     }
 
     console.log("❌ Error al verificar el webhook.");
+
     return res.sendStatus(403);
 
 };
@@ -93,6 +98,9 @@ const receiveMessage = async (req, res) => {
 
                         if (faltantes.length === 0) {
 
+                            const resumen =
+                                generarResumen(conversation);
+
                             console.log("");
 
                             console.log("===================================");
@@ -101,9 +109,13 @@ const receiveMessage = async (req, res) => {
 
                             console.log("===================================");
 
-                            console.log(
+                            console.log(resumen);
 
-                                generarResumen(conversation)
+                            await sendEmail(
+
+                                "Nuevo cliente - PixelLabs",
+
+                                resumen
 
                             );
 
