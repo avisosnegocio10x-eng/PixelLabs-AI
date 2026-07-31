@@ -1,33 +1,14 @@
 const axios = require("axios");
 
 const {
-    obtenerEstadoConversacion,
-    obtenerCamposFaltantes
-} = require("../sales/salesManager");
+    generarContexto
+} = require("../context/contextManager");
 
 const askGemini = async (conversation, systemPrompt = "") => {
 
     try {
 
-        let history = "";
-
-        conversation.forEach(msg => {
-
-            if (msg.role === "user") {
-
-                history += `Cliente: ${msg.message}\n`;
-
-            } else {
-
-                history += `PixelLabs: ${msg.message}\n`;
-
-            }
-
-        });
-
-        const estado = obtenerEstadoConversacion(conversation);
-
-        const faltantes = obtenerCamposFaltantes(estado);
+        const contexto = generarContexto(conversation);
 
         const response = await axios.post(
 
@@ -41,29 +22,22 @@ const askGemini = async (conversation, systemPrompt = "") => {
                             {
                                 text: `${systemPrompt}
 
-HISTORIAL
+CONTEXTO DEL CLIENTE
 
-${history}
-
-ESTADO ACTUAL
-
-${JSON.stringify(estado, null, 2)}
-
-DATOS FALTANTES
-
-${faltantes.join(", ") || "Ninguno"}
+${contexto}
 
 INSTRUCCIONES
 
-- Continúa la conversación sin volver a saludar.
-- Pregunta únicamente por los datos faltantes.
-- No vuelvas a preguntar datos que ya fueron proporcionados.
-- Cuando todos los datos estén completos, indícalo y menciona que un asesor continuará con la cotización.
-- Responde siempre como un empleado de PixelLabs.
+- Continúa la conversación naturalmente.
+- No vuelvas a saludar si ya saludaste.
+- Usa la información del contexto.
+- No vuelvas a preguntar datos que ya existen.
+- Si toda la información está completa, indica que un asesor continuará con la cotización.
 - Nunca inventes información.
-- No uses markdown (*, ** o #).
-- Responde en español.
-- Sé breve y natural.`
+- Nunca inventes precios.
+- Responde únicamente como un empleado de PixelLabs.
+- Responde siempre en español.
+- Sé breve y profesional.`
                             }
                         ]
                     }
@@ -77,16 +51,19 @@ INSTRUCCIONES
     } catch (error) {
 
         console.error("Error con Gemini:");
+
         console.error(
             error.response?.data || error.message
         );
 
-        return "Lo siento, en este momento no puedo responder.";
+        return "En este momento estamos procesando varias solicitudes. Por favor, intenta nuevamente en unos segundos.";
 
     }
 
 };
 
 module.exports = {
+
     askGemini
+
 };
