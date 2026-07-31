@@ -2,6 +2,11 @@ const { sendMessage } = require("../services/metaService");
 const { askGemini } = require("../services/geminiService");
 const systemPrompt = require("../prompts/systemPrompt");
 
+const {
+    addMessage,
+    getConversation
+} = require("../memory/memoryManager");
+
 const verifyWebhook = (req, res) => {
 
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -23,6 +28,7 @@ const verifyWebhook = (req, res) => {
     }
 
     console.log("❌ Error al verificar el webhook.");
+
     return res.sendStatus(403);
 
 };
@@ -30,9 +36,6 @@ const verifyWebhook = (req, res) => {
 const receiveMessage = async (req, res) => {
 
     try {
-
-        console.log("📩 Nuevo mensaje recibido:");
-        console.log(JSON.stringify(req.body, null, 2));
 
         if (req.body.object === "page") {
 
@@ -48,13 +51,32 @@ const receiveMessage = async (req, res) => {
 
                         console.log("Cliente:", userMessage);
 
-                        const aiResponse = await askGemini(
-                            userMessage,
-                            systemPrompt
+                        // Guardar mensaje del cliente
+                        addMessage(
+                            senderId,
+                            "user",
+                            userMessage
                         );
 
-                        console.log("Gemini:", aiResponse);
+                        // Obtener historial completo
+                        const conversation =
+                            getConversation(senderId);
 
+                        // Preguntar a Gemini usando el historial
+                        const aiResponse =
+                            await askGemini(
+                                conversation,
+                                systemPrompt
+                            );
+
+                        // Guardar respuesta del bot
+                        addMessage(
+                            senderId,
+                            "assistant",
+                            aiResponse
+                        );
+
+                        // Enviar respuesta
                         await sendMessage(
                             senderId,
                             aiResponse

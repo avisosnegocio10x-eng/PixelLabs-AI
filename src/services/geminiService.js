@@ -1,8 +1,24 @@
 const axios = require("axios");
 
-const askGemini = async (message, systemPrompt = "") => {
+const askGemini = async (conversation, systemPrompt = "") => {
 
     try {
+
+        let history = "";
+
+        conversation.forEach(msg => {
+
+            if (msg.role === "user") {
+
+                history += `Cliente: ${msg.message}\n`;
+
+            } else {
+
+                history += `PixelLabs: ${msg.message}\n`;
+
+            }
+
+        });
 
         const response = await axios.post(
 
@@ -16,19 +32,20 @@ const askGemini = async (message, systemPrompt = "") => {
                             {
                                 text: `${systemPrompt}
 
-MENSAJE DEL CLIENTE:
+HISTORIAL DE LA CONVERSACIÓN
 
-${message}
+${history}
 
-INSTRUCCIONES IMPORTANTES:
+INSTRUCCIONES IMPORTANTES
 
-- Responde únicamente como un empleado de PixelLabs.
-- Nunca digas que eres Gemini.
-- Nunca digas que eres una IA.
-- Habla siempre en español.
-- Sé amable y profesional.
-- No inventes precios.
-- Si falta información, pregunta al cliente.`
+- Continúa la conversación.
+- No vuelvas a saludar si ya saludaste.
+- Recuerda todo el contexto anterior.
+- Habla como un empleado de PixelLabs.
+- Nunca inventes precios.
+- Nunca inventes servicios.
+- Si falta información para una cotización, sigue haciendo preguntas.
+- Responde siempre en español.`
                             }
                         ]
                     }
