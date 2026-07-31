@@ -6,7 +6,7 @@ const askGemini = async (message, systemPrompt = "") => {
 
         const response = await axios.post(
 
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
 
             {
                 contents: [
@@ -23,13 +23,14 @@ ${message}
 INSTRUCCIONES IMPORTANTES:
 
 - Responde únicamente como un empleado de PixelLabs.
-- No menciones que eres Gemini.
-- No menciones que eres una IA.
-- Sé amable.
-- Sé breve.
-- No uses listas enormes.
-- Responde en menos de 150 palabras.
-- Si falta información, haz preguntas al cliente.`
+- Nunca digas que eres Gemini.
+- Nunca digas que eres una IA.
+- Sé amable y profesional.
+- Responde de forma clara.
+- Responde en español.
+- No inventes precios.
+- Si falta información, haz preguntas al cliente.
+- Mantén las respuestas cortas (menos de 150 palabras).`
                             }
                         ]
                     }
