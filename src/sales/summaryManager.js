@@ -1,40 +1,36 @@
+const {
+    extraerCotizacion
+} = require("./quoteExtractor");
+
 function generarResumen(conversation) {
 
-    const texto = conversation
-        .map(msg => msg.message)
-        .join(" ");
-
-    let producto = "No especificado";
-
-    if (texto.toLowerCase().includes("llavero")) {
-
-        producto = "Llavero";
-
-    } else if (texto.toLowerCase().includes("figura")) {
-
-        producto = "Figura";
-
-    } else if (texto.toLowerCase().includes("maceta")) {
-
-        producto = "Maceta";
-
-    }
+    const datos = extraerCotizacion(conversation);
 
     return `
 
-=========================
-NUEVO CLIENTE PIXELLABS
-=========================
+======================================
+NUEVA SOLICITUD - PIXELLABS
+======================================
 
 Producto:
-${producto}
+${datos.producto}
 
-Resumen de conversación:
+Color:
+${datos.color}
 
-${texto}
+Cantidad:
+${datos.cantidad}
+
+Medidas:
+${datos.medidas}
+
+Diseño desde imagen:
+${datos.imagen}
+
+Archivo STL:
+${datos.stl}
 
 Estado:
-
 Listo para cotización.
 
 `;
