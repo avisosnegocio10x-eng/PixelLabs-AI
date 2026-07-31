@@ -4,7 +4,9 @@ const systemPrompt = require("../prompts/systemPrompt");
 
 const {
     addMessage,
-    getConversation
+    getConversation,
+    correoYaEnviado,
+    marcarCorreoEnviado
 } = require("../memory/memoryManager");
 
 const {
@@ -96,7 +98,10 @@ const receiveMessage = async (req, res) => {
                             aiResponse
                         );
 
-                        if (faltantes.length === 0) {
+                        if (
+                            faltantes.length === 0 &&
+                            !correoYaEnviado(senderId)
+                        ) {
 
                             const resumen =
                                 generarResumen(conversation);
@@ -118,6 +123,10 @@ const receiveMessage = async (req, res) => {
                                 resumen
 
                             );
+
+                            marcarCorreoEnviado(senderId);
+
+                            console.log("📧 Correo enviado solo una vez.");
 
                         }
 

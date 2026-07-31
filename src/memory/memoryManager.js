@@ -1,70 +1,58 @@
-const fs = require("fs");
-const path = require("path");
+const conversations = {};
 
-const memoryPath = path.join(__dirname, "conversations.json");
+function crearConversacionSiNoExiste(userId) {
 
-function readMemory() {
+    if (!conversations[userId]) {
 
-    if (!fs.existsSync(memoryPath)) {
+        conversations[userId] = {
 
-        fs.writeFileSync(memoryPath, "{}");
+            messages: [],
+
+            correoEnviado: false
+
+        };
 
     }
-
-    const data = fs.readFileSync(memoryPath, "utf8");
-
-    return JSON.parse(data);
-
-}
-
-function saveMemory(memory) {
-
-    fs.writeFileSync(
-
-        memoryPath,
-
-        JSON.stringify(memory, null, 4)
-
-    );
 
 }
 
 function addMessage(userId, role, message) {
 
-    const memory = readMemory();
+    crearConversacionSiNoExiste(userId);
 
-    if (!memory[userId]) {
-
-        memory[userId] = [];
-
-    }
-
-    memory[userId].push({
+    conversations[userId].messages.push({
 
         role,
 
         message,
 
-        date: new Date().toISOString()
+        timestamp: Date.now()
 
     });
-
-    // Solo guardar los últimos 20 mensajes
-    if (memory[userId].length > 20) {
-
-        memory[userId] = memory[userId].slice(-20);
-
-    }
-
-    saveMemory(memory);
 
 }
 
 function getConversation(userId) {
 
-    const memory = readMemory();
+    crearConversacionSiNoExiste(userId);
 
-    return memory[userId] || [];
+    return conversations[userId].messages;
+
+}
+
+function correoYaEnviado(userId) {
+
+    crearConversacionSiNoExiste(userId);
+
+    return conversations[userId].correoEnviado;
+
+}
+
+function marcarCorreoEnviado(userId) {
+
+    crearConversacionSiNoExiste(userId);
+
+    conversations[userId].correoEnviado = true;
 
 }
 
@@ -72,6 +60,10 @@ module.exports = {
 
     addMessage,
 
-    getConversation
+    getConversation,
+
+    correoYaEnviado,
+
+    marcarCorreoEnviado
 
 };
