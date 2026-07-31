@@ -1,8 +1,9 @@
 const { sendMessage } = require("../services/metaService");
 const { askGemini } = require("../services/geminiService");
-const systemPrompt = require("../utils/systemPrompt");
+const systemPrompt = require("../prompts/systemPrompt");
 
 const verifyWebhook = (req, res) => {
+
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
     const mode = req.query["hub.mode"];
@@ -15,12 +16,15 @@ const verifyWebhook = (req, res) => {
         mode === "subscribe" &&
         token === VERIFY_TOKEN
     ) {
+
         console.log("✅ Webhook verificado correctamente.");
         return res.status(200).send(challenge);
+
     }
 
     console.log("❌ Error al verificar el webhook.");
     return res.sendStatus(403);
+
 };
 
 const receiveMessage = async (req, res) => {
