@@ -1,64 +1,133 @@
 // ================================
-// PIXELLABS - QUOTE EXTRACTOR V2
+// PIXELLABS - QUOTE EXTRACTOR V3
 // ================================
 
 function extraerCotizacion(conversation) {
 
-    const texto = conversation
-        .filter(msg => msg.role === "user")
+    // ======================================
+    // SOLO MENSAJES DEL CLIENTE
+    // ======================================
+
+    const mensajesUsuario = conversation.filter(
+
+        msg => msg.role === "user"
+
+    );
+
+    const texto = mensajesUsuario
         .map(msg => msg.message)
         .join(" ")
         .toLowerCase();
 
-    // ================================
-    // COLORES
-    // ================================
+    // ======================================
+    // COLORES DISPONIBLES
+    // ======================================
 
     const coloresDisponibles = [
-        "negro","blanco","gris","gris oscuro","gris claro",
-        "rosa","fucsia","turquesa",
-        "verde","verde brillante","verde bambú","verde militar","verde oliva",
-        "rojo","azul","azul marino","azul cielo","celeste",
-        "amarillo","naranja","morado","violeta",
-        "café","marrón","beige","crema",
-        "dorado","oro","plateado","plata",
-        "cobre","bronce","transparente"
+
+        "negro",
+        "blanco",
+
+        "gris",
+        "gris oscuro",
+        "gris claro",
+
+        "rosa",
+        "fucsia",
+
+        "turquesa",
+
+        "verde",
+        "verde brillante",
+        "verde bambú",
+        "verde militar",
+        "verde oliva",
+
+        "rojo",
+
+        "azul",
+        "azul marino",
+        "azul cielo",
+        "celeste",
+
+        "amarillo",
+
+        "naranja",
+
+        "morado",
+        "violeta",
+
+        "café",
+        "marrón",
+
+        "beige",
+        "crema",
+
+        "dorado",
+        "oro",
+
+        "plateado",
+        "plata",
+
+        "cobre",
+        "bronce",
+
+        "transparente"
+
     ];
 
-    const coloresDetectados = [];
+    // ======================================
+    // ÚLTIMO COLOR CONFIRMADO
+    // ======================================
 
-    coloresDisponibles.forEach(color => {
+    let ultimoColor = null;
 
-        if (texto.includes(color)) {
+    mensajesUsuario.forEach(msg => {
 
-            if (!coloresDetectados.includes(color)) {
+        const mensaje = msg.message.toLowerCase();
 
-                coloresDetectados.push(
+        coloresDisponibles.forEach(color => {
+
+            if (mensaje.includes(color)) {
+
+                ultimoColor =
+
                     color.charAt(0).toUpperCase() +
-                    color.slice(1)
-                );
+
+                    color.slice(1);
 
             }
 
-        }
+        });
 
     });
 
-    // ================================
+    // ======================================
     // MATERIALES
-    // ================================
+    // ======================================
 
     const materiales = [
+
         "pla silk",
+
         "pla matte",
+
         "pla",
+
         "petg",
+
         "abs",
+
         "asa",
+
         "tpu",
+
         "resina",
+
         "carbon fiber",
+
         "wood"
+
     ];
 
     let material = "No especificado";
@@ -73,35 +142,60 @@ function extraerCotizacion(conversation) {
 
     });
 
-    // ================================
+    // ======================================
     // PRODUCTOS
-    // ================================
+    // ======================================
 
     const productos = [
+
         "llavero",
+
         "figura",
+
         "maceta",
+
         "organizador",
+
         "soporte",
+
         "porta celular",
+
         "logo",
+
         "letras",
+
         "busto",
+
         "casco",
+
         "espada",
+
         "katana",
+
         "auto",
+
         "carro",
+
         "automóvil",
+
         "camión",
+
         "moto",
+
         "avión",
+
         "barco",
+
         "juguete",
+
         "prototipo",
+
         "pieza",
+
         "engranaje",
+
         "decoración"
+
     ];
 
     let producto = "No especificado";
@@ -111,35 +205,49 @@ function extraerCotizacion(conversation) {
         if (texto.includes(item)) {
 
             producto =
+
                 item.charAt(0).toUpperCase() +
+
                 item.slice(1);
 
         }
 
     });
-
-    // ================================
+        // ======================================
     // STL
-    // ================================
+    // ======================================
 
     let stl = "No";
 
+    // Primero buscamos frases negativas
+
     if (
 
+        texto.includes("no tengo archivo stl") ||
         texto.includes("no tengo stl") ||
-        texto.includes("sin stl") ||
+        texto.includes("no cuento con archivo stl") ||
         texto.includes("no cuento con stl") ||
+        texto.includes("sin archivo stl") ||
+        texto.includes("sin stl") ||
+        texto.includes("únicamente tengo una imagen") ||
+        texto.includes("unicamente tengo una imagen") ||
         texto.includes("solo tengo una imagen") ||
-        texto.includes("únicamente tengo una imagen")
+        texto.includes("solo cuento con una imagen")
 
     ) {
 
         stl = "No";
 
-    } else if (
+    }
 
-        texto.includes("archivo stl") ||
+    // Solo si NO encontramos una frase negativa,
+    // buscamos si sí tiene STL.
+
+    else if (
+
+        texto.includes("tengo archivo stl") ||
         texto.includes("tengo stl") ||
+        texto.includes("cuento con archivo stl") ||
         texto.includes("cuento con stl")
 
     ) {
@@ -148,54 +256,88 @@ function extraerCotizacion(conversation) {
 
     }
 
-    // ================================
+    // ======================================
     // IMAGEN
-    // ================================
+    // ======================================
 
     const imagen =
 
         texto.includes("imagen") ||
-        texto.includes("foto")
+        texto.includes("foto") ||
+        texto.includes("fotografía") ||
+        texto.includes("fotografia")
 
             ? "Sí"
 
             : "No";
 
-    // ================================
+    // ======================================
     // CANTIDAD
-    // ================================
+    // ======================================
 
-    const cantidadMatch =
-        texto.match(/\b(\d+)\s*(unidad|unidades|pieza|piezas|llavero|llaveros)/i);
+    let cantidad = "No especificada";
 
-    const cantidad =
+    const numeroCantidad = texto.match(
 
-        cantidadMatch
+        /\b(\d+)\s*(unidad|unidades|pieza|piezas|figura|figuras|llavero|llaveros)/i
 
-            ? cantidadMatch[1]
+    );
 
-            : "No especificada";
+    if (numeroCantidad) {
 
-    // ================================
+        cantidad = numeroCantidad[1];
+
+    }
+
+    else if (
+
+        texto.includes("una unidad") ||
+        texto.includes("un llavero") ||
+        texto.includes("una figura") ||
+        texto.includes("una pieza") ||
+        texto.includes("solo una") ||
+        texto.includes("solamente una") ||
+        texto.includes("solo necesito una") ||
+        texto.includes("únicamente una")
+
+    ) {
+
+        cantidad = "1";
+
+    }
+
+    // ======================================
     // MEDIDAS
-    // ================================
+    // ======================================
 
-    const medidasMatch =
-        texto.match(/(\d+)\s*cm.*?(\d+)\s*cm/i);
+    let medidas = "No especificadas";
 
-    const medidas =
-        medidasMatch
-            ? `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`
-            : "No especificadas";
+    const medidasMatch = texto.match(
+
+        /(\d+)\s*cm.*?(\d+)\s*cm/i
+
+    );
+
+    if (medidasMatch) {
+
+        medidas =
+
+            `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`;
+
+    }
+        // ======================================
+    // RESULTADO
+    // ======================================
 
     return {
 
         producto,
 
         color:
-            coloresDetectados.length
-                ? coloresDetectados.join(", ")
-                : "No especificado",
+
+            ultimoColor ||
+
+            "No especificado",
 
         material,
 
@@ -210,6 +352,10 @@ function extraerCotizacion(conversation) {
     };
 
 }
+
+// ======================================
+// EXPORTAR
+// ======================================
 
 module.exports = {
 
