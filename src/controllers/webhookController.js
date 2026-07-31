@@ -1,3 +1,5 @@
+const { sendMessage } = require("../services/metaService");
+
 const verifyWebhook = (req, res) => {
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
@@ -20,10 +22,34 @@ const verifyWebhook = (req, res) => {
 };
 
 const receiveMessage = async (req, res) => {
+
     try {
 
         console.log("📩 Nuevo mensaje recibido:");
         console.log(JSON.stringify(req.body, null, 2));
+
+        if (req.body.object === "page") {
+
+            for (const entry of req.body.entry) {
+
+                for (const event of entry.messaging) {
+
+                    if (event.message && event.sender) {
+
+                        const senderId = event.sender.id;
+
+                        await sendMessage(
+                            senderId,
+                            "¡Hola! 👋 Soy el asistente virtual de PixelLabs. ¿En qué puedo ayudarte?"
+                        );
+
+                    }
+
+                }
+
+            }
+
+        }
 
         res.sendStatus(200);
 
@@ -34,6 +60,7 @@ const receiveMessage = async (req, res) => {
         res.sendStatus(500);
 
     }
+
 };
 
 module.exports = {
