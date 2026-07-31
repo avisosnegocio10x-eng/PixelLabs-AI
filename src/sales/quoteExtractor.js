@@ -1,3 +1,7 @@
+// ================================
+// PIXELLABS - QUOTE EXTRACTOR V2
+// ================================
+
 function extraerCotizacion(conversation) {
 
     const texto = conversation
@@ -6,107 +10,209 @@ function extraerCotizacion(conversation) {
         .join(" ")
         .toLowerCase();
 
-    const cantidad =
-        texto.match(/\b(\d+)\s*(unidad|unidades|llavero|llaveros|pieza|piezas)/i);
+    // ================================
+    // COLORES
+    // ================================
 
-    const medidas =
-        texto.match(/(\d+)\s*cm.*?(\d+)\s*cm/i);
+    const coloresDisponibles = [
+        "negro","blanco","gris","gris oscuro","gris claro",
+        "rosa","fucsia","turquesa",
+        "verde","verde brillante","verde bambú","verde militar","verde oliva",
+        "rojo","azul","azul marino","azul cielo","celeste",
+        "amarillo","naranja","morado","violeta",
+        "café","marrón","beige","crema",
+        "dorado","oro","plateado","plata",
+        "cobre","bronce","transparente"
+    ];
 
-    const colores = [];
+    const coloresDetectados = [];
 
-    if (texto.includes("negro")) colores.push("Negro");
-    if (texto.includes("blanco")) colores.push("Blanco");
-    if (texto.includes("gris oscuro")) colores.push("Gris oscuro");
-    if (texto.includes("gris")) colores.push("Gris");
-    if (texto.includes("rosa")) colores.push("Rosa");
-    if (texto.includes("turquesa")) colores.push("Turquesa");
-    if (texto.includes("verde")) colores.push("Verde");
-    if (texto.includes("verde bambú")) colores.push("Verde bambú");
-    if (texto.includes("café")) colores.push("Café");
+    coloresDisponibles.forEach(color => {
+
+        if (texto.includes(color)) {
+
+            if (!coloresDetectados.includes(color)) {
+
+                coloresDetectados.push(
+                    color.charAt(0).toUpperCase() +
+                    color.slice(1)
+                );
+
+            }
+
+        }
+
+    });
+
+    // ================================
+    // MATERIALES
+    // ================================
+
+    const materiales = [
+        "pla silk",
+        "pla matte",
+        "pla",
+        "petg",
+        "abs",
+        "asa",
+        "tpu",
+        "resina",
+        "carbon fiber",
+        "wood"
+    ];
+
+    let material = "No especificado";
+
+    materiales.forEach(item => {
+
+        if (texto.includes(item)) {
+
+            material = item.toUpperCase();
+
+        }
+
+    });
+
+    // ================================
+    // PRODUCTOS
+    // ================================
+
+    const productos = [
+        "llavero",
+        "figura",
+        "maceta",
+        "organizador",
+        "soporte",
+        "porta celular",
+        "logo",
+        "letras",
+        "busto",
+        "casco",
+        "espada",
+        "katana",
+        "auto",
+        "carro",
+        "automóvil",
+        "camión",
+        "moto",
+        "avión",
+        "barco",
+        "juguete",
+        "prototipo",
+        "pieza",
+        "engranaje",
+        "decoración"
+    ];
 
     let producto = "No especificado";
 
-    if (texto.includes("llavero")) {
+    productos.forEach(item => {
 
-        producto = "Llavero";
+        if (texto.includes(item)) {
 
-    } else if (
+            producto =
+                item.charAt(0).toUpperCase() +
+                item.slice(1);
 
-        texto.includes("carro") ||
-        texto.includes("auto") ||
-        texto.includes("automóvil") ||
-        texto.includes("lamborghini") ||
-        texto.includes("ferrari") ||
-        texto.includes("bmw") ||
-        texto.includes("honda") ||
-        texto.includes("toyota") ||
-        texto.includes("modelo")
+        }
+
+    });
+
+    // ================================
+    // STL
+    // ================================
+
+    let stl = "No";
+
+    if (
+
+        texto.includes("no tengo stl") ||
+        texto.includes("sin stl") ||
+        texto.includes("no cuento con stl") ||
+        texto.includes("solo tengo una imagen") ||
+        texto.includes("únicamente tengo una imagen")
 
     ) {
 
-        producto = "Modelo de vehículo";
+        stl = "No";
 
-    } else if (texto.includes("figura")) {
+    } else if (
 
-        producto = "Figura";
+        texto.includes("archivo stl") ||
+        texto.includes("tengo stl") ||
+        texto.includes("cuento con stl")
 
-    } else if (texto.includes("maceta")) {
+    ) {
 
-        producto = "Maceta";
-
-    } else if (texto.includes("organizador")) {
-
-        producto = "Organizador";
+        stl = "Sí";
 
     }
 
-    const tieneImagen =
+    // ================================
+    // IMAGEN
+    // ================================
+
+    const imagen =
+
         texto.includes("imagen") ||
-        texto.includes("foto");
+        texto.includes("foto")
 
-    const tieneSTL =
+            ? "Sí"
 
-        (texto.includes("tengo stl") ||
-        texto.includes("cuento con stl") ||
-        texto.includes("archivo stl"))
+            : "No";
 
-        &&
+    // ================================
+    // CANTIDAD
+    // ================================
 
-        !texto.includes("no tengo stl");
+    const cantidadMatch =
+        texto.match(/\b(\d+)\s*(unidad|unidades|pieza|piezas|llavero|llaveros)/i);
+
+    const cantidad =
+
+        cantidadMatch
+
+            ? cantidadMatch[1]
+
+            : "No especificada";
+
+    // ================================
+    // MEDIDAS
+    // ================================
+
+    const medidasMatch =
+        texto.match(/(\d+)\s*cm.*?(\d+)\s*cm/i);
+
+    const medidas =
+        medidasMatch
+            ? `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`
+            : "No especificadas";
 
     return {
 
         producto,
 
         color:
-            colores.length
-                ? colores.join(", ")
+            coloresDetectados.length
+                ? coloresDetectados.join(", ")
                 : "No especificado",
 
-        cantidad:
-            cantidad
-                ? cantidad[1]
-                : "No especificada",
+        material,
 
-        medidas:
-            medidas
-                ? `${medidas[1]} cm x ${medidas[2]} cm`
-                : "No especificadas",
+        cantidad,
 
-        imagen:
-            tieneImagen
-                ? "Sí"
-                : "No",
+        medidas,
 
-        stl:
-            tieneSTL
-                ? "Sí"
-                : "No"
+        imagen,
+
+        stl
 
     };
 
 }
 
 module.exports = {
+
     extraerCotizacion
+
 };
