@@ -6,6 +6,7 @@ const path = require("path");
 
 const webhookRoutes = require("./src/routes/webhook");
 const adminRoutes = require("./src/routes/adminRoutes");
+const legalRoutes = require("./src/routes/legalRoutes");
 
 const app = express();
 
@@ -30,6 +31,8 @@ app.use(
 app.use("/webhook", webhookRoutes);
 
 app.use("/admin", adminRoutes);
+
+app.use("/", legalRoutes);
 
 // ============================
 

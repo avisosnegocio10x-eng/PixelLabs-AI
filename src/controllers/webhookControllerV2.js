@@ -14,6 +14,10 @@ const {
     parseWhatsAppEvent
 } = require("../channels/whatsapp");
 
+// ======================================
+// VERIFICAR WEBHOOK
+// ======================================
+
 const verifyWebhook = (req, res) => {
 
     const VERIFY_TOKEN =
@@ -55,90 +59,129 @@ const verifyWebhook = (req, res) => {
 
 };
 
+// ======================================
+// RECIBIR MENSAJES
+// ======================================
+
 const receiveMessage = async (req, res) => {
 
     try {
 
+        const objeto =
+            req.body.object;
+
         if (
 
-    req.body.object !== "page" &&
-    req.body.object !== "instagram" &&
-    req.body.object !== "whatsapp_business_account"
+            objeto !== "page" &&
+            objeto !== "instagram" &&
+            objeto !== "whatsapp_business_account"
 
-) {
+        ) {
 
-    return res.sendStatus(404);
+            return res.sendStatus(404);
 
-}
+        }
 
         for (const entry of (req.body.entry || [])) {
 
-            const eventos =
+            // ======================================
+            // MESSENGER
+            // ======================================
 
-                entry.messaging ||
+            if (objeto === "page") {
 
-                entry.changes ||
+                for (const event of (entry.messaging || [])) {
 
-                [];
+                    const data =
+                        parseMessengerEvent(event);
 
-            for (const event of eventos) {
+                    if (!data) {
 
-                let data = null;
-                                // ===============================
-                // MESSENGER
-                // ===============================
+                        continue;
 
-                if (entry.messaging) {
+                    }
 
-                    data =
+                    console.log("");
 
-                        parseMessengerEvent(
-                            event
-                        );
+                    console.log("===================================");
 
-                }
+                    console.log("NUEVO MENSAJE");
 
-                // ===============================
-                // INSTAGRAM
-                // ===============================
+                    console.log("===================================");
 
-                else if (entry.changes) {
+                    console.log(data);
 
-    if (
-        event.value &&
-        Array.isArray(event.value.messages)
-    ) {
-
-        data =
-            parseWhatsAppEvent(event);
-
-    } else {
-
-        data =
-            parseInstagramEvent(event);
-
-    }
-
-}
-
-                if (!data) {
-
-                    continue;
+                    await processConversation(data);
 
                 }
 
-                console.log("");
+            }
 
-                console.log("===================================");
+            // ======================================
+            // INSTAGRAM
+            // ======================================
 
-                console.log("NUEVO MENSAJE");
+            if (objeto === "instagram") {
 
-                console.log("===================================");
+                for (const event of (entry.changes || [])) {
 
-                console.log(data);
+                    const data =
+                        parseInstagramEvent(event);
 
-                await processConversation(data);
-                            }
+                    if (!data) {
+
+                        continue;
+
+                    }
+
+                    console.log("");
+
+                    console.log("===================================");
+
+                    console.log("NUEVO MENSAJE");
+
+                    console.log("===================================");
+
+                    console.log(data);
+
+                    await processConversation(data);
+
+                }
+
+            }
+
+            // ======================================
+            // WHATSAPP
+            // ======================================
+
+            if (objeto === "whatsapp_business_account") {
+
+                for (const event of (entry.changes || [])) {
+
+                    const data =
+                        parseWhatsAppEvent(event);
+
+                    if (!data) {
+
+                        continue;
+
+                    }
+
+                    console.log("");
+
+                    console.log("===================================");
+
+                    console.log("NUEVO MENSAJE");
+
+                    console.log("===================================");
+
+                    console.log(data);
+
+                    await processConversation(data);
+
+                }
+
+            }
 
         }
 
@@ -150,11 +193,15 @@ const receiveMessage = async (req, res) => {
 
         console.error("===================================");
 
-        console.error("ERROR EN WEBHOOK V2");
+        console.error("ERROR EN WEBHOOK");
 
         console.error("===================================");
 
-        console.error(error);
+        console.error(
+            error.response?.data ||
+            error.message ||
+            error
+        );
 
         return res.sendStatus(500);
 
