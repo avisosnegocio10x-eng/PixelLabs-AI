@@ -64,17 +64,37 @@ const receiveMessage = async (req, res) => {
 
     try {
 
-        if (req.body.object === "page") {
+    if (req.body.object === "page" || req.body.object === "instagram") {
 
             for (const entry of req.body.entry) {
 
-                for (const event of entry.messaging) {
+    const eventos = entry.messaging || entry.changes || [];
 
-                    if (event.message && event.sender) {
+    for (const event of eventos) {
 
-                        const senderId = event.sender.id;
+                    let senderId;
+let userMessage;
 
-                        const userMessage = event.message.text || "";
+if (event.message && event.sender) {
+
+    senderId = event.sender.id;
+    userMessage = event.message.text || "";
+
+} else if (event.value && event.value.messages) {
+
+    senderId = event.value.contacts[0].wa_id || event.value.messages[0].from;
+    userMessage = event.value.messages[0].text?.body || "";
+
+} else if (event.value && event.value.sender && event.value.message) {
+
+    senderId = event.value.sender.id;
+    userMessage = event.value.message.text || "";
+
+} else {
+
+    continue;
+
+}
 console.log("Cliente:", userMessage);
 
 // ======================================
