@@ -194,6 +194,22 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
     // VERIFICAR SI LA COTIZACIÓN ESTÁ COMPLETA
     // ======================================
 
+    console.log("");
+
+console.log("===================================");
+
+console.log("DEBUG COTIZACION");
+
+console.log("===================================");
+
+console.log("Faltantes:", faltantes);
+
+console.log("Correo enviado:", correoYaEnviado(senderId));
+
+console.log("Tiene nombre:", tieneNombre(senderId));
+
+console.log("===================================");
+
     if (
         faltantes.length === 0 &&
         !correoYaEnviado(senderId)
