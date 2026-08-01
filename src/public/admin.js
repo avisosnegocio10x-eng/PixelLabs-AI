@@ -1,32 +1,64 @@
 async function cargarDashboard() {
 
-    try {
+    const respuesta = await fetch("/admin/api/dashboard");
 
-        const response = await fetch(
+    const datos = await respuesta.json();
 
-            "/admin/api/dashboard"
+    document.getElementById("clientes").innerText =
+        datos.totalClientes;
 
-        );
+    document.getElementById("ia").innerText =
+        datos.iaActiva;
 
-        const datos = await response.json();
+    document.getElementById("cotizaciones").innerText =
+        datos.cotizaciones;
 
-        document.getElementById("totalClientes").textContent =
-            datos.totalClientes;
+}
 
-        document.getElementById("iaActiva").textContent =
-            datos.iaActiva;
+async function cargarClientes() {
 
-        document.getElementById("cotizaciones").textContent =
-            datos.cotizaciones;
+    const respuesta = await fetch("/admin/api/clientes");
 
-    }
+    const clientes = await respuesta.json();
 
-    catch (error) {
+    const contenedor =
+        document.getElementById("listaClientes");
 
-        console.error(error);
+    contenedor.innerHTML = "";
 
-    }
+    clientes.forEach(cliente => {
+
+        contenedor.innerHTML += `
+
+            <div class="cliente-card">
+
+                <h3>${cliente.nombre}</h3>
+
+                <p><strong>ID:</strong> ${cliente.id}</p>
+
+                <p><strong>Plataforma:</strong> ${cliente.plataforma}</p>
+
+                <p>
+                    <strong>IA:</strong>
+                    ${cliente.iaActiva ? "🟢 Activa" : "🔴 Desactivada"}
+                </p>
+
+            </div>
+
+        `;
+
+    });
 
 }
 
 cargarDashboard();
+
+cargarClientes();
+
+setInterval(() => {
+
+    cargarDashboard();
+
+    cargarClientes();
+
+}, 5000);
