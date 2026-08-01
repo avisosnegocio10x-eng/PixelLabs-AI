@@ -46,25 +46,40 @@ function obtenerEstadoConversacion(conversation) {
 
     // STL
 
-    if (
-        texto.includes("tengo stl") ||
-        texto.includes("cuento con stl") ||
-        texto.includes("archivo stl")
-    ) {
+if (
 
-        estado.archivo = true;
+    texto.includes("tengo stl") ||
+    texto.includes("cuento con stl") ||
+    texto.includes("tengo archivo stl") ||
+    texto.includes("cuento con archivo stl") ||
+    texto.includes("archivo stl")
 
-    }
+) {
 
-    if (
-        texto.includes("no tengo stl") ||
-        texto.includes("sin stl") ||
-        texto.includes("solo tengo una imagen")
-    ) {
+    estado.archivo = true;
 
-        estado.archivo = false;
+}
 
-    }
+// También es una respuesta válida NO tener STL
+
+if (
+
+    texto.includes("no tengo stl") ||
+    texto.includes("no tengo archivo stl") ||
+    texto.includes("no cuento con stl") ||
+    texto.includes("no cuento con archivo stl") ||
+    texto.includes("sin stl") ||
+    texto.includes("sin archivo stl") ||
+    texto.includes("solo tengo una imagen") ||
+    texto.includes("únicamente tengo una imagen") ||
+    texto.includes("unicamente tengo una imagen") ||
+    texto.includes("solo cuento con una imagen")
+
+) {
+
+    estado.archivo = true;
+
+}
 
     // IMAGEN
 
