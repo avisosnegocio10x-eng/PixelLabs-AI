@@ -1,5 +1,10 @@
 const { sendMessage } = require("../services/metaService");
 const { askGemini } = require("../services/geminiService");
+
+const {
+    esNombreValido
+} = require("../services/nameValidationService");
+
 const systemPrompt = require("../prompts/systemPrompt");
 
 const {
@@ -50,6 +55,7 @@ const verifyWebhook = (req, res) => {
     }
 
     console.log("❌ Error al verificar el webhook.");
+
     return res.sendStatus(403);
 
 };
@@ -69,35 +75,81 @@ const receiveMessage = async (req, res) => {
                         const senderId = event.sender.id;
 
                         const userMessage = event.message.text || "";
+console.log("Cliente:", userMessage);
 
-                        console.log("Cliente:", userMessage);
-
-                        // ======================================
-                        // SI ESTAMOS ESPERANDO EL NOMBRE
-                        // ======================================
-
+// ======================================
+// VALIDAR SI ESTAMOS ESPERANDO EL NOMBRE
+// ======================================
                         if (estaEsperandoNombre(senderId)) {
 
-                            guardarNombre(senderId, userMessage);
+                            const nombreValido =
+                                await esNombreValido(userMessage);
 
-                            setEsperandoNombre(senderId, false);
+                          if (!nombreValido) {
+
+    setEsperandoNombre(
+        senderId,
+        true
+    );
+
+    await sendMessage(
+        senderId,
+        "Gracias. Solo necesito el nombre de la persona o empresa con la que deseas registrar la cotización.\n\nPor ejemplo:\n• Carlos López\n• Empresa XYZ"
+    );
+
+    continue;
+
+}
+    guardarNombre(
+    senderId,
+    userMessage
+);
+
+addMessage(
+    senderId,
+    "user",
+    userMessage
+);
+                            setEsperandoNombre(
+                                senderId,
+                                false
+                            );
 
                             const conversation =
                                 getConversation(senderId);
 
                             const resumen =
-                                generarResumen(conversation, senderId);
+                                generarResumen(
+                                    conversation,
+                                    senderId
+                                );
+
+                            console.log("");
+
+                            console.log("===================================");
+
+                            console.log("CLIENTE REGISTRADO");
+
+                            console.log("===================================");
+
+                            console.log(resumen);
 
                             await sendEmail(
                                 "Nuevo cliente - PixelLabs",
                                 resumen
                             );
 
-                            marcarCorreoEnviado(senderId);
+                            marcarCorreoEnviado(
+                                senderId
+                            );
+
+console.log("📧 Correo enviado solo una vez.");
 
                             await sendMessage(
                                 senderId,
-                                `¡Muchas gracias, ${userMessage}! Hemos registrado tu solicitud correctamente.
+                                `¡Muchas gracias, ${userMessage}!
+
+Hemos registrado correctamente tu solicitud.
 
 Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
                             );
@@ -116,16 +168,19 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
                             getConversation(senderId);
 
                         const estado =
-                            obtenerEstadoConversacion(conversation);
-
-                        const faltantes =
-                            obtenerCamposFaltantes(estado);
-
-                        const aiResponse =
-                            await askGemini(
-                                conversation,
-                                systemPrompt
+                            obtenerEstadoConversacion(
+                                conversation
                             );
+const faltantes =
+    obtenerCamposFaltantes(
+        estado
+    );
+
+const aiResponse =
+    await askGemini(
+        conversation,
+        systemPrompt
+    );
 
                         addMessage(
                             senderId,
@@ -139,7 +194,7 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
                         );
 
                         // ======================================
-                        // ESPERAR EL NOMBRE
+                        // LA COTIZACIÓN ESTÁ COMPLETA
                         // ======================================
 
                         if (
@@ -147,16 +202,30 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
                             !correoYaEnviado(senderId)
                         ) {
 
-                            if (!tieneNombre(senderId)) {
+if (!tieneNombre(senderId)) {
 
-                                setEsperandoNombre(senderId, true);
+    setEsperandoNombre(
+        senderId,
+        true
+    );
 
-                                continue;
+    console.log("");
 
-                            }
+    console.log("===================================");
+
+    console.log("ESPERANDO NOMBRE DEL CLIENTE");
+
+    console.log("===================================");
+
+    continue;
+
+}
 
                             const resumen =
-                                generarResumen(conversation, senderId);
+                                generarResumen(
+                                    conversation,
+                                    senderId
+                                );
 
                             console.log("");
 
@@ -173,9 +242,11 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
                                 resumen
                             );
 
-                            marcarCorreoEnviado(senderId);
+                            marcarCorreoEnviado(
+                                senderId
+                            );
 
-                            console.log("📧 Correo enviado solo una vez.");
+                            console.log("📧 Correo enviado correctamente.");
 
                         }
 
@@ -187,9 +258,17 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
 
         }
 
-        res.sendStatus(200);
+       res.sendStatus(200);
 
-    } catch (error) {
+} catch (error) {
+
+        console.error("");
+
+        console.error("===================================");
+
+        console.error("ERROR EN WEBHOOK");
+
+        console.error("===================================");
 
         console.error(error);
 
