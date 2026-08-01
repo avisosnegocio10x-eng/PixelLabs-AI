@@ -5,7 +5,9 @@ const {
 
     obtenerDashboard,
 
-    obtenerClientes
+    obtenerClientes,
+
+    cambiarEstadoIA
 
 } = require("../controllers/adminController");
 
@@ -49,6 +51,18 @@ router.get(
     "/api/clientes",
 
     obtenerClientes
+
+);
+
+// ======================================
+// ACTIVAR / DESACTIVAR IA
+// ======================================
+
+router.post(
+
+    "/api/ia/:id",
+
+    cambiarEstadoIA
 
 );
 

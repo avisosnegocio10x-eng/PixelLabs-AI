@@ -47,6 +47,8 @@ p{
 
     gap:25px;
 
+    margin-bottom:40px;
+
 }
 
 .card{
@@ -88,5 +90,93 @@ p{
     font-size:52px;
 
     color:#60A5FA;
+
+}
+
+/* ========================= */
+/* CLIENTES */
+/* ========================= */
+
+#listaClientes{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+
+    gap:20px;
+
+    margin-top:25px;
+
+}
+
+.cliente-card{
+
+    background:#1F2937;
+
+    border:1px solid #374151;
+
+    border-radius:15px;
+
+    padding:20px;
+
+    box-shadow:0 5px 20px rgba(0,0,0,.25);
+
+}
+
+.cliente-card h3{
+
+    margin-bottom:15px;
+
+    color:#60A5FA;
+
+}
+
+.cliente-card p{
+
+    margin:8px 0;
+
+    color:#E5E7EB;
+
+}
+
+.cliente-card button{
+
+    width:100%;
+
+    margin-top:18px;
+
+    padding:12px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#2563EB;
+
+    color:white;
+
+    cursor:pointer;
+
+    font-size:15px;
+
+    font-weight:bold;
+
+    transition:.2s;
+
+}
+
+.cliente-card button:hover{
+
+    background:#1D4ED8;
+
+}
+
+hr{
+
+    border:none;
+
+    border-top:1px solid #374151;
+
+    margin:35px 0;
 
 }

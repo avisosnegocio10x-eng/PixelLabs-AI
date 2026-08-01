@@ -17,9 +17,11 @@ function cargarConversaciones() {
 
         }
 
-        const data = fs.readFileSync(FILE_PATH, "utf8");
+        return JSON.parse(
 
-        return JSON.parse(data);
+            fs.readFileSync(FILE_PATH, "utf8")
+
+        );
 
     } catch (error) {
 
@@ -35,7 +37,9 @@ function cargarConversaciones() {
 // GUARDAR CONVERSACIONES
 // ======================================
 
-function guardarConversaciones(conversations) {
+let conversations = cargarConversaciones();
+
+function guardarConversaciones() {
 
     fs.writeFileSync(
 
@@ -47,15 +51,6 @@ function guardarConversaciones(conversations) {
 
 }
 
-let conversations = cargarConversaciones();
-
-console.log("");
-console.log("====================================");
-console.log("MEMORY MANAGER CARGADO");
-console.log("====================================");
-
-// ======================================
-// CREAR CLIENTE SI NO EXISTE
 // ======================================
 
 function crearConversacionSiNoExiste(userId) {
@@ -80,25 +75,15 @@ function crearConversacionSiNoExiste(userId) {
 
         };
 
-        guardarConversaciones(conversations);
+        guardarConversaciones();
 
     }
 
 }
 
 // ======================================
-// AGREGAR MENSAJE
-// ======================================
 
 function addMessage(userId, role, message) {
-
-    console.log("");
-    console.log("====================================");
-    console.log("ADD MESSAGE EJECUTADO");
-    console.log("Usuario:", userId);
-    console.log("Rol:", role);
-    console.log("Mensaje:", message);
-    console.log("====================================");
 
     crearConversacionSiNoExiste(userId);
 
@@ -112,14 +97,10 @@ function addMessage(userId, role, message) {
 
     });
 
-    guardarConversaciones(conversations);
-
-    console.log("Conversación guardada correctamente.");
+    guardarConversaciones();
 
 }
 
-// ======================================
-// OBTENER CONVERSACIÓN
 // ======================================
 
 function getConversation(userId) {
@@ -131,8 +112,6 @@ function getConversation(userId) {
 }
 
 // ======================================
-// OBTENER CLIENTE
-// ======================================
 
 function getClient(userId) {
 
@@ -143,8 +122,6 @@ function getClient(userId) {
 }
 
 // ======================================
-// GUARDAR NOMBRE
-// ======================================
 
 function setClientName(userId, nombre) {
 
@@ -152,12 +129,10 @@ function setClientName(userId, nombre) {
 
     conversations[userId].nombre = nombre;
 
-    guardarConversaciones(conversations);
+    guardarConversaciones();
 
 }
 
-// ======================================
-// ESPERANDO NOMBRE
 // ======================================
 
 function estaEsperandoNombre(userId) {
@@ -174,12 +149,10 @@ function setEsperandoNombre(userId, estado) {
 
     conversations[userId].esperandoNombre = estado;
 
-    guardarConversaciones(conversations);
+    guardarConversaciones();
 
 }
 
-// ======================================
-// CORREO ENVIADO
 // ======================================
 
 function correoYaEnviado(userId) {
@@ -196,12 +169,10 @@ function marcarCorreoEnviado(userId) {
 
     conversations[userId].correoEnviado = true;
 
-    guardarConversaciones(conversations);
+    guardarConversaciones();
 
 }
 
-// ======================================
-// TODAS LAS CONVERSACIONES
 // ======================================
 
 function getAllConversations() {
@@ -211,6 +182,8 @@ function getAllConversations() {
     return conversations;
 
 }
+
+// ======================================
 
 module.exports = {
 
@@ -230,6 +203,8 @@ module.exports = {
 
     correoYaEnviado,
 
-    marcarCorreoEnviado
+    marcarCorreoEnviado,
+
+    guardarConversaciones
 
 };

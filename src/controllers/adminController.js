@@ -1,5 +1,7 @@
 const {
-    getAllConversations
+    getAllConversations,
+    getClient,
+    guardarConversaciones
 } = require("../memory/memoryManager");
 
 // ======================================
@@ -12,30 +14,20 @@ const obtenerDashboard = (req, res) => {
 
     const clientes = Object.values(conversaciones);
 
-    const totalClientes = clientes.length;
-
-    const iaActiva = clientes.filter(
-        cliente => cliente.iaActiva
-    ).length;
-
-    const cotizaciones = clientes.filter(
-        cliente => cliente.correoEnviado
-    ).length;
-
     res.json({
 
-        totalClientes,
+        totalClientes: clientes.length,
 
-        iaActiva,
+        iaActiva: clientes.filter(c => c.iaActiva).length,
 
-        cotizaciones
+        cotizaciones: clientes.filter(c => c.correoEnviado).length
 
     });
 
 };
 
 // ======================================
-// LISTA DE CLIENTES
+// CLIENTES
 // ======================================
 
 const obtenerClientes = (req, res) => {
@@ -44,23 +36,43 @@ const obtenerClientes = (req, res) => {
 
     const clientes = Object.values(conversaciones);
 
-    const listaClientes = clientes.map(cliente => ({
+    res.json(clientes);
 
-        id: cliente.id,
+};
 
-        nombre: cliente.nombre || "Sin registrar",
+// ======================================
+// CAMBIAR ESTADO IA
+// ======================================
 
-        plataforma: cliente.plataforma || "Facebook",
+const cambiarEstadoIA = (req, res) => {
 
-        iaActiva: cliente.iaActiva,
+    const { id } = req.params;
 
-        correoEnviado: cliente.correoEnviado,
+    const cliente = getClient(id);
 
-        esperandoNombre: cliente.esperandoNombre
+    if (!cliente) {
 
-    }));
+        return res.status(404).json({
 
-    res.json(listaClientes);
+            ok: false,
+
+            mensaje: "Cliente no encontrado"
+
+        });
+
+    }
+
+    cliente.iaActiva = !cliente.iaActiva;
+
+    guardarConversaciones();
+
+    res.json({
+
+        ok: true,
+
+        iaActiva: cliente.iaActiva
+
+    });
 
 };
 
@@ -68,6 +80,8 @@ module.exports = {
 
     obtenerDashboard,
 
-    obtenerClientes
+    obtenerClientes,
+
+    cambiarEstadoIA
 
 };

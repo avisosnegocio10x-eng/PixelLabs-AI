@@ -21,33 +21,57 @@ async function cargarClientes() {
 
     const clientes = await respuesta.json();
 
-    const contenedor =
+    const lista =
         document.getElementById("listaClientes");
 
-    contenedor.innerHTML = "";
+    lista.innerHTML = "";
 
     clientes.forEach(cliente => {
 
-        contenedor.innerHTML += `
+        lista.innerHTML += `
 
-            <div class="cliente-card">
+        <div class="cliente-card">
 
-                <h3>${cliente.nombre}</h3>
+            <h3>${cliente.nombre || "Sin registrar"}</h3>
 
-                <p><strong>ID:</strong> ${cliente.id}</p>
+            <p><strong>ID:</strong> ${cliente.id}</p>
 
-                <p><strong>Plataforma:</strong> ${cliente.plataforma}</p>
+            <p><strong>Plataforma:</strong> ${cliente.plataforma}</p>
 
-                <p>
-                    <strong>IA:</strong>
-                    ${cliente.iaActiva ? "🟢 Activa" : "🔴 Desactivada"}
-                </p>
+            <p>
+                <strong>IA:</strong>
+                ${cliente.iaActiva ? "🟢 Activa" : "🔴 Desactivada"}
+            </p>
 
-            </div>
+            <button onclick="cambiarEstadoIA('${cliente.id}')">
+
+                ${cliente.iaActiva
+                    ? "Desactivar IA"
+                    : "Activar IA"}
+
+            </button>
+
+        </div>
+
+        <br>
 
         `;
 
     });
+
+}
+
+async function cambiarEstadoIA(id) {
+
+    await fetch(`/admin/api/ia/${id}`, {
+
+        method: "POST"
+
+    });
+
+    cargarDashboard();
+
+    cargarClientes();
 
 }
 
