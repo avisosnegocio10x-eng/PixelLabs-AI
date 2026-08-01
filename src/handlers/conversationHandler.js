@@ -116,6 +116,8 @@ const processConversation = async ({
 
         console.log(resumen);
 
+        console.log("===== ANTES DE sendEmail =====");
+
         await sendEmail(
             "Nuevo cliente - PixelLabs",
             resumen
@@ -124,6 +126,8 @@ const processConversation = async ({
         marcarCorreoEnviado(
             senderId
         );
+
+console.log("===== DESPUÉS DE sendEmail =====");
 
         console.log(
             "📧 Correo enviado solo una vez."

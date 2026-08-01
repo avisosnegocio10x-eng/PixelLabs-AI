@@ -16,6 +16,8 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (subject, text) => {
 
+    console.log("===== ENTRÓ A emailManager =====");
+
     try {
 
         await transporter.sendMail({
@@ -31,6 +33,8 @@ const sendEmail = async (subject, text) => {
         });
 
         console.log("📧 Correo enviado correctamente.");
+
+        console.log("===== EMAIL TERMINÓ =====");
 
     } catch (error) {
 
