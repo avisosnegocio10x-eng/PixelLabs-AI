@@ -306,25 +306,44 @@ function extraerCotizacion(conversation) {
 
     }
 
-    // ======================================
-    // MEDIDAS
-    // ======================================
+   // ======================================
+// MEDIDAS
+// ======================================
 
-    let medidas = "No especificadas";
+let medidas = "No especificadas";
 
-    const medidasMatch = texto.match(
+// Detecta medidas como: 10 cm x 5 cm
 
-        /(\d+)\s*cm.*?(\d+)\s*cm/i
+let medidasMatch = texto.match(
+
+    /(\d+)\s*cm.*?(\d+)\s*cm/i
+
+);
+
+if (medidasMatch) {
+
+    medidas =
+        `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`;
+
+}
+
+// Detecta medidas como: 6 cm
+
+else {
+
+    medidasMatch = texto.match(
+
+        /(\d+(?:\.\d+)?)\s*cm\b/i
 
     );
 
     if (medidasMatch) {
 
-        medidas =
-
-            `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`;
+        medidas = `${medidasMatch[1]} cm`;
 
     }
+
+}
         // ======================================
     // RESULTADO
     // ======================================

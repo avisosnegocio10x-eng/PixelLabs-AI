@@ -9,7 +9,7 @@ function parseMessengerEvent(event) {
     let userMessage = "";
 
     // ===============================
-    // MENSAJE DE TEXTO
+    // TEXTO
     // ===============================
 
     if (event.message.text) {
@@ -19,12 +19,14 @@ function parseMessengerEvent(event) {
     }
 
     // ===============================
-    // IMAGEN O ARCHIVO
+    // ARCHIVOS
     // ===============================
 
     else if (
+
         event.message.attachments &&
         event.message.attachments.length > 0
+
     ) {
 
         const tipo =
@@ -34,9 +36,12 @@ function parseMessengerEvent(event) {
 
             userMessage = "[IMAGEN]";
 
-        } else {
+        }
 
-            userMessage = `[${tipo.toUpperCase()}]`;
+        else {
+
+            userMessage =
+                `[${tipo.toUpperCase()}]`;
 
         }
 
