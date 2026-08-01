@@ -10,6 +10,10 @@ const {
     parseInstagramEvent
 } = require("../channels/instagram");
 
+const {
+    parseWhatsAppEvent
+} = require("../channels/whatsapp");
+
 const verifyWebhook = (req, res) => {
 
     const VERIFY_TOKEN =
@@ -57,14 +61,15 @@ const receiveMessage = async (req, res) => {
 
         if (
 
-            req.body.object !== "page" &&
-            req.body.object !== "instagram"
+    req.body.object !== "page" &&
+    req.body.object !== "instagram" &&
+    req.body.object !== "whatsapp_business_account"
 
-        ) {
+) {
 
-            return res.sendStatus(404);
+    return res.sendStatus(404);
 
-        }
+}
 
         for (const entry of (req.body.entry || [])) {
 
@@ -99,13 +104,22 @@ const receiveMessage = async (req, res) => {
 
                 else if (entry.changes) {
 
-                    data =
+    if (
+        event.value &&
+        Array.isArray(event.value.messages)
+    ) {
 
-                        parseInstagramEvent(
-                            event
-                        );
+        data =
+            parseWhatsAppEvent(event);
 
-                }
+    } else {
+
+        data =
+            parseInstagramEvent(event);
+
+    }
+
+}
 
                 if (!data) {
 

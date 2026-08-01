@@ -70,10 +70,12 @@ const processConversation = async ({
                 true
             );
 
-            await sendMessage(
-                senderId,
-                "Gracias. Solo necesito el nombre de la persona o empresa con la que deseas registrar la cotización.\n\nPor ejemplo:\n• Carlos López\n• Empresa XYZ"
-            );
+               await sendMessage(
+    plataforma,
+    senderId,
+    "Gracias. Solo necesito el nombre de la persona o empresa con la que deseas registrar la cotización.\n\nPor ejemplo:\n• Carlos López\n• Empresa XYZ"
+);
+    
 
             return;
 
@@ -127,14 +129,15 @@ const processConversation = async ({
             "📧 Correo enviado solo una vez."
         );
 
-        await sendMessage(
-            senderId,
-            `¡Muchas gracias, ${userMessage}!
+     await sendMessage(
+    plataforma,
+    senderId,
+    `¡Muchas gracias, ${userMessage}!
 
 Hemos registrado correctamente tu solicitud.
 
 Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
-        );
+);
 
         return;
 
@@ -182,11 +185,11 @@ Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo ante
         aiResponse
     );
 
-    await sendMessage(
-        senderId,
-        aiResponse
-    );
-
+   await sendMessage(
+    plataforma,
+    senderId,
+    aiResponse
+);
     // ======================================
     // VERIFICAR SI LA COTIZACIÓN ESTÁ COMPLETA
     // ======================================
