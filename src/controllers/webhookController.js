@@ -12,13 +12,8 @@ const {
 } = require("../memory/memoryManager");
 
 const {
-
-    obtenerCliente,
-
     tieneNombre,
-
     guardarNombre
-
 } = require("../customer/customerManager");
 
 const {
@@ -77,13 +72,46 @@ const receiveMessage = async (req, res) => {
 
                         console.log("Cliente:", userMessage);
 
+                        // ======================================
+                        // SI ESTAMOS ESPERANDO EL NOMBRE
+                        // ======================================
+
+                        if (estaEsperandoNombre(senderId)) {
+
+                            guardarNombre(senderId, userMessage);
+
+                            setEsperandoNombre(senderId, false);
+
+                            const conversation =
+                                getConversation(senderId);
+
+                            const resumen =
+                                generarResumen(conversation, senderId);
+
+                            await sendEmail(
+                                "Nuevo cliente - PixelLabs",
+                                resumen
+                            );
+
+                            marcarCorreoEnviado(senderId);
+
+                            await sendMessage(
+                                senderId,
+                                `¡Muchas gracias, ${userMessage}! Hemos registrado tu solicitud correctamente.
+
+Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
+                            );
+
+                            continue;
+
+                        }
+
                         addMessage(
                             senderId,
                             "user",
                             userMessage
                         );
 
-        
                         const conversation =
                             getConversation(senderId);
 
@@ -110,13 +138,25 @@ const receiveMessage = async (req, res) => {
                             aiResponse
                         );
 
+                        // ======================================
+                        // ESPERAR EL NOMBRE
+                        // ======================================
+
                         if (
                             faltantes.length === 0 &&
                             !correoYaEnviado(senderId)
                         ) {
 
+                            if (!tieneNombre(senderId)) {
+
+                                setEsperandoNombre(senderId, true);
+
+                                continue;
+
+                            }
+
                             const resumen =
-                                generarResumen(conversation);
+                                generarResumen(conversation, senderId);
 
                             console.log("");
 
