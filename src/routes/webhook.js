@@ -4,7 +4,7 @@ const router = express.Router();
 const {
     verifyWebhook,
     receiveMessage
-} = require("../controllers/webhookController");
+} = require("../controllers/webhookControllerV2");
 
 // Verificación que hace Meta
 router.get("/", verifyWebhook);
