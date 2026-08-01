@@ -130,7 +130,7 @@ function extraerCotizacion(conversation) {
 
     ];
 
-    let material = "No especificado";
+   let material = "PLA";
 
     materiales.forEach(item => {
 

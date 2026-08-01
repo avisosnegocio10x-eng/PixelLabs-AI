@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const webhookRoutes = require("./src/routes/webhook");
 const adminRoutes = require("./src/routes/adminRoutes");
@@ -9,7 +10,18 @@ const adminRoutes = require("./src/routes/adminRoutes");
 const app = express();
 
 app.use(cors());
+
 app.use(express.json());
+
+// ============================
+// ARCHIVOS PÚBLICOS
+// ============================
+
+app.use(
+    express.static(
+        path.join(__dirname, "src/public")
+    )
+);
 
 // ============================
 // RUTAS
