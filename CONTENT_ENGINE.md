@@ -28,3 +28,16 @@ Las tendencias nuevas requieren aprobación humana, aunque superen 95 puntos.
 ## Interrupción
 
 `POST /admin/api/content-engine/emergency-stop` apaga el motor y `autoPublish` en una sola operación. La guardia vuelve a comprobar el interruptor inmediatamente antes de publicar.
+
+## Catálogo y contenido
+
+- Búsqueda por referencia o nombre.
+- Estados `AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`, `PAUSED` y `ARCHIVED`.
+- Bloqueo de promoción configurable; el panel ofrece 15 días.
+- Acciones para ideas, reel y carrusel se encolan con idempotencia.
+- Un producto no disponible no puede generar borrador ni aprobarse.
+- El precio solo se considera confirmado si existe `price_confirmed_at`.
+
+## Aprobación
+
+Un contenido nace `DRAFT`, recibe las ocho revisiones y pasa a `REQUIRES_HUMAN_APPROVAL`. Solo la ruta administrativa de aprobación puede convertirlo en `APPROVED`. La exportación social devuelve otra variante `DRAFT`; no equivale a publicar.

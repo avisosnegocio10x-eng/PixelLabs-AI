@@ -1,277 +1,147 @@
 const { sendMessage } = require("../services/metaService");
 const { askGemini } = require("../services/geminiService");
-
-const {
-    esNombreValido
-} = require("../services/nameValidationService");
-
+const { esNombreValido } = require("../services/nameValidationService");
 const systemPrompt = require("../prompts/systemPrompt");
-
 const {
     addMessage,
     getConversation,
+    getClient,
     correoYaEnviado,
     marcarCorreoEnviado,
     estaEsperandoNombre,
-    setEsperandoNombre
+    setEsperandoNombre,
+    setClientPlatform
 } = require("../memory/memoryManager");
+const { tieneNombre, guardarNombre } = require("../customer/customerManager");
+const { obtenerEstadoConversacion, obtenerCamposFaltantes } = require("../sales/salesManager");
+const { generarResumen } = require("../sales/summaryManager");
+const { extraerCotizacion } = require("../sales/quoteExtractor");
+const { sendEmail } = require("../email/emailManager");
+const { createCrmRepository } = require("../contentEngine/repositories/crmRepository");
 
-const {
-    tieneNombre,
-    guardarNombre
-} = require("../customer/customerManager");
+const crm = createCrmRepository();
 
-const {
-    obtenerEstadoConversacion,
-    obtenerCamposFaltantes
-} = require("../sales/salesManager");
+function extractAttributionCode(message) {
+    return String(message || "").toUpperCase().match(/\bPL-[A-Z0-9-]{4,40}\b/)?.[0] || null;
+}
 
-const {
-    generarResumen
-} = require("../sales/summaryManager");
+async function safeCrm(operation) {
+    try {
+        return await operation();
+    } catch (error) {
+        console.error("CRM sync failed", { message: error.message });
+        return null;
+    }
+}
 
-const {
-    sendEmail
-} = require("../email/emailManager");
+async function recordCrmMessage({
+    plataforma,
+    senderId,
+    role,
+    body,
+    externalMessageId = null
+}) {
+    return safeCrm(() => crm.recordMessage({
+        platform: plataforma,
+        externalContactId: senderId,
+        externalConversationId: senderId,
+        externalMessageId,
+        role,
+        body,
+        attributionCode: role === "user" ? extractAttributionCode(body) : null
+    }));
+}
+
+async function sendAndRecord(plataforma, senderId, message) {
+    await sendMessage(plataforma, senderId, message);
+    addMessage(senderId, "assistant", message);
+    await recordCrmMessage({ plataforma, senderId, role: "assistant", body: message });
+}
+
+async function registerReadyOpportunity({ plataforma, senderId, conversation }) {
+    const resumen = generarResumen(conversation, senderId);
+    await sendEmail("Nuevo cliente - PixelLabs", resumen);
+    marcarCorreoEnviado(senderId);
+    await safeCrm(() => crm.markOpportunityReady({
+        platform: plataforma,
+        externalContactId: senderId,
+        externalConversationId: senderId,
+        quote: extraerCotizacion(conversation)
+    }));
+}
 
 const processConversation = async ({
     senderId,
     userMessage,
-    plataforma
+    plataforma,
+    externalMessageId = null
 }) => {
-
-    console.log("");
-
-    console.log("===================================");
-
-    console.log("PROCESS CONVERSATION");
-
-    console.log("===================================");
-
-    console.log("Plataforma:", plataforma);
-
-    console.log("Cliente:", senderId);
-
-    console.log("Mensaje:", userMessage);
-
-    // ======================================
-    // VALIDAR SI ESTAMOS ESPERANDO EL NOMBRE
-    // ======================================
+    setClientPlatform(senderId, plataforma);
 
     if (estaEsperandoNombre(senderId)) {
-
-        const nombreValido =
-            await esNombreValido(userMessage);
-
+        const nombreValido = await esNombreValido(userMessage);
         if (!nombreValido) {
-
-            setEsperandoNombre(
+            setEsperandoNombre(senderId, true);
+            await sendAndRecord(
+                plataforma,
                 senderId,
-                true
+                "Gracias. Solo necesito el nombre de la persona o empresa con la que deseas registrar la cotización.\n\nPor ejemplo:\n• Carlos López\n• Empresa XYZ"
             );
-
-               await sendMessage(
-    plataforma,
-    senderId,
-    "Gracias. Solo necesito el nombre de la persona o empresa con la que deseas registrar la cotización.\n\nPor ejemplo:\n• Carlos López\n• Empresa XYZ"
-);
-    
-
             return;
-
         }
 
-        guardarNombre(
+        guardarNombre(senderId, userMessage);
+        addMessage(senderId, "user", userMessage);
+        await recordCrmMessage({
+            plataforma,
             senderId,
-            userMessage
-        );
+            role: "user",
+            body: userMessage,
+            externalMessageId
+        });
+        await safeCrm(() => crm.updateContact(plataforma, senderId, {
+            displayName: userMessage.trim()
+        }));
+        setEsperandoNombre(senderId, false);
 
-        addMessage(
+        const conversation = getConversation(senderId);
+        await registerReadyOpportunity({ plataforma, senderId, conversation });
+        await sendAndRecord(
+            plataforma,
             senderId,
-            "user",
-            userMessage
+            `¡Muchas gracias, ${userMessage.trim()}!\n\nHemos registrado correctamente tu solicitud.\n\nUn asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
         );
-
-        setEsperandoNombre(
-            senderId,
-            false
-        );
-
-        const conversation =
-            getConversation(senderId);
-
-        const resumen =
-            generarResumen(
-                conversation,
-                senderId
-            );
-
-        console.log("");
-
-        console.log("===================================");
-
-        console.log("CLIENTE REGISTRADO");
-
-        console.log("===================================");
-
-        console.log(resumen);
-
-        console.log("===== ANTES DE sendEmail =====");
-
-        await sendEmail(
-            "Nuevo cliente - PixelLabs",
-            resumen
-        );
-
-        marcarCorreoEnviado(
-            senderId
-        );
-
-console.log("===== DESPUÉS DE sendEmail =====");
-
-        console.log(
-            "📧 Correo enviado solo una vez."
-        );
-
-     await sendMessage(
-    plataforma,
-    senderId,
-    `¡Muchas gracias, ${userMessage}!
-
-Hemos registrado correctamente tu solicitud.
-
-Un asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
-);
-
         return;
-
     }
-        // ======================================
-    // GUARDAR MENSAJE DEL CLIENTE
-    // ======================================
 
-    addMessage(
+    addMessage(senderId, "user", userMessage);
+    await recordCrmMessage({
+        plataforma,
         senderId,
-        "user",
-        userMessage
-    );
+        role: "user",
+        body: userMessage,
+        externalMessageId
+    });
 
-    const conversation =
-        getConversation(senderId);
+    if (!getClient(senderId).iaActiva) return;
 
-    // ======================================
-    // ANALIZAR ESTADO DE LA COTIZACIÓN
-    // ======================================
+    const conversation = getConversation(senderId);
+    const estado = obtenerEstadoConversacion(conversation);
+    const faltantes = obtenerCamposFaltantes(estado);
+    const aiResponse = await askGemini(conversation, systemPrompt);
+    await sendAndRecord(plataforma, senderId, aiResponse);
 
-    const estado =
-        obtenerEstadoConversacion(
-            conversation
-        );
+    if (faltantes.length !== 0 || correoYaEnviado(senderId)) return;
 
-    const faltantes =
-        obtenerCamposFaltantes(
-            estado
-        );
-
-    // ======================================
-    // CONSULTAR GEMINI
-    // ======================================
-
-    const aiResponse =
-        await askGemini(
-            conversation,
-            systemPrompt
-        );
-
-    addMessage(
-        senderId,
-        "assistant",
-        aiResponse
-    );
-
-   await sendMessage(
-    plataforma,
-    senderId,
-    aiResponse
-);
-    // ======================================
-    // VERIFICAR SI LA COTIZACIÓN ESTÁ COMPLETA
-    // ======================================
-
-    console.log("");
-
-console.log("===================================");
-
-console.log("DEBUG COTIZACION");
-
-console.log("===================================");
-
-console.log("Faltantes:", faltantes);
-
-console.log("Correo enviado:", correoYaEnviado(senderId));
-
-console.log("Tiene nombre:", tieneNombre(senderId));
-
-console.log("===================================");
-
-    if (
-        faltantes.length === 0 &&
-        !correoYaEnviado(senderId)
-    ) {
-
-        if (!tieneNombre(senderId)) {
-
-            setEsperandoNombre(
-                senderId,
-                true
-            );
-
-            console.log("");
-
-            console.log("===================================");
-
-            console.log("ESPERANDO NOMBRE DEL CLIENTE");
-
-            console.log("===================================");
-
-            return;
-
-        }
-
-        const resumen =
-            generarResumen(
-                conversation,
-                senderId
-            );
-
-        console.log("");
-
-        console.log("===================================");
-
-        console.log("CLIENTE LISTO PARA COTIZAR");
-
-        console.log("===================================");
-
-        console.log(resumen);
-
-        await sendEmail(
-            "Nuevo cliente - PixelLabs",
-            resumen
-        );
-
-        marcarCorreoEnviado(
-            senderId
-        );
-
-        console.log(
-            "📧 Correo enviado correctamente."
-        );
-
+    if (!tieneNombre(senderId)) {
+        setEsperandoNombre(senderId, true);
+        return;
     }
-    };
+
+    await registerReadyOpportunity({ plataforma, senderId, conversation });
+};
 
 module.exports = {
-
-    processConversation
-
+    processConversation,
+    extractAttributionCode
 };

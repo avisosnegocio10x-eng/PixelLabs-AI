@@ -18,7 +18,10 @@ function parseInstagramEvent(event) {
             event.value.sender.id,
 
         userMessage:
-            event.value.message.text || ""
+            event.value.message.text || "",
+
+        externalMessageId:
+            event.value.message.mid || null
 
     };
 

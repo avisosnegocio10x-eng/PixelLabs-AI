@@ -1,79 +1,42 @@
-const {
-    getAllConversations,
-    getClient,
-    guardarConversaciones
-} = require("../memory/memoryManager");
+const { createCrmRepository } = require("../contentEngine/repositories/crmRepository");
+
+const crm = createCrmRepository();
 
 // ======================================
 // DASHBOARD
 // ======================================
 
-const obtenerDashboard = (req, res) => {
-
-    const conversaciones = getAllConversations();
-
-    const clientes = Object.values(conversaciones);
-
-    res.json({
-
-        totalClientes: clientes.length,
-
-        iaActiva: clientes.filter(c => c.iaActiva).length,
-
-        cotizaciones: clientes.filter(c => c.correoEnviado).length
-
-    });
-
+const obtenerDashboard = async (req, res, next) => {
+    try {
+        res.json(await crm.dashboard());
+    } catch (error) {
+        next(error);
+    }
 };
 
 // ======================================
 // CLIENTES
 // ======================================
 
-const obtenerClientes = (req, res) => {
-
-    const conversaciones = getAllConversations();
-
-    const clientes = Object.values(conversaciones);
-
-    res.json(clientes);
-
+const obtenerClientes = async (req, res, next) => {
+    try {
+        res.json(await crm.listContacts());
+    } catch (error) {
+        next(error);
+    }
 };
 
 // ======================================
 // CAMBIAR ESTADO IA
 // ======================================
 
-const cambiarEstadoIA = (req, res) => {
-
-    const { id } = req.params;
-
-    const cliente = getClient(id);
-
-    if (!cliente) {
-
-        return res.status(404).json({
-
-            ok: false,
-
-            mensaje: "Cliente no encontrado"
-
-        });
-
+const cambiarEstadoIA = async (req, res, next) => {
+    try {
+        const contact = await crm.toggleAi(req.body?.plataforma || "messenger", req.params.id);
+        res.json({ ok: true, iaActiva: contact.iaActiva });
+    } catch (error) {
+        next(error);
     }
-
-    cliente.iaActiva = !cliente.iaActiva;
-
-    guardarConversaciones();
-
-    res.json({
-
-        ok: true,
-
-        iaActiva: cliente.iaActiva
-
-    });
-
 };
 
 module.exports = {

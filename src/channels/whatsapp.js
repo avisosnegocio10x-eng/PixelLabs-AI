@@ -18,7 +18,10 @@ function parseWhatsAppEvent(event) {
             event.value.messages?.[0]?.from,
 
         userMessage:
-            event.value.messages?.[0]?.text?.body || ""
+            event.value.messages?.[0]?.text?.body || "",
+
+        externalMessageId:
+            event.value.messages?.[0]?.id || null
 
     };
 

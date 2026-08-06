@@ -20,6 +20,18 @@ El backend escribe cada fragmento directamente en disco, fusiona rangos y evita 
 
 Los estados se guardan en el manifiesto y, con Supabase configurado, en `source_videos`. Al reiniciar, los trabajos `QUEUED` o `PROCESSING` se recuperan; los pausados permanecen pausados.
 
-## Siguiente capa
+## Análisis y clips
 
-Transcripción, detección de escenas/movimiento, privacidad y propuestas de clips utilizarán `video_segments`, `video_transcripts`, `detected_moments`, `video_clips` y `clip_versions`.
+Después de segmentar, el worker ejecuta por segmento:
+
+- detección de cambios de escena;
+- detección de silencios;
+- detección de cuadros negros;
+- eliminación de candidatos demasiado solapados;
+- propuesta de ventanas de clip sin imponer una cantidad fija.
+
+Los candidatos quedan con privacidad `PENDING_HUMAN_REVIEW` y `automaticPublishEligible: false`. La detección semántica de acciones de impresión 3D y la transcripción quedan en `PENDING_PROVIDER` hasta conectar un proveedor autorizado.
+
+## Render
+
+El panel crea MP4 vertical H.264/AAC y portada JPEG. El fondo se adapta con desenfoque y el video se conserva centrado. No añade transiciones aleatorias, texto inventado, música ni logo no verificado. Para aprobar se exige una versión renderizada, puntaje mínimo 85 y confirmación humana de privacidad.

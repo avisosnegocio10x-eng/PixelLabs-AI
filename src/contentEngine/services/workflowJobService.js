@@ -1,6 +1,4 @@
-const crypto = require("crypto");
-const fs = require("fs/promises");
-const path = require("path");
+const { createWorkflowJobRepository } = require("../repositories/workflowJobRepository");
 
 const WORKFLOW_TYPES = Object.freeze([
     "trend-research",
@@ -17,14 +15,13 @@ const WORKFLOW_TYPES = Object.freeze([
     "error-recovery"
 ]);
 
+const WORKFLOW_STATUSES = Object.freeze([
+    "QUEUED", "RUNNING", "PAUSED", "COMPLETED", "FAILED", "CANCELLED"
+]);
+
 class WorkflowJobService {
     constructor(options = {}) {
-        this.directory = path.resolve(
-            options.directory ||
-            process.env.CONTENT_ENGINE_WORK_DIR ||
-            "./storage/work",
-            "workflow-jobs"
-        );
+        this.repository = options.repository || createWorkflowJobRepository();
     }
 
     assertType(type) {
@@ -36,83 +33,78 @@ class WorkflowJobService {
         }
     }
 
-    async create(type, payload = {}, idempotencyKey = "") {
-        this.assertType(type);
-        await fs.mkdir(this.directory, { recursive: true });
-
-        if (idempotencyKey) {
-            const existing = await this.findByIdempotencyKey(type, idempotencyKey);
-            if (existing) return existing;
-        }
-
-        const now = new Date().toISOString();
-        const job = {
-            id: crypto.randomUUID(),
-            type,
-            status: "QUEUED",
-            payload,
-            idempotencyKey: idempotencyKey || null,
-            attempt: 0,
-            createdAt: now,
-            updatedAt: now
-        };
-
-        await this.write(job);
-        return job;
-    }
-
-    async write(job) {
-        const finalPath = path.join(this.directory, `${job.id}.json`);
-        const temporaryPath = `${finalPath}.${process.pid}.tmp`;
-        await fs.writeFile(temporaryPath, JSON.stringify(job, null, 2));
-        await fs.rename(temporaryPath, finalPath);
-        return job;
-    }
-
-    async get(id) {
+    assertId(id) {
         if (!/^[0-9a-f-]{36}$/i.test(id)) {
             throw Object.assign(new Error("ID de trabajo inválido."), {
                 statusCode: 400,
                 code: "INVALID_JOB_ID"
             });
         }
-
-        try {
-            return JSON.parse(
-                await fs.readFile(path.join(this.directory, `${id}.json`), "utf8")
-            );
-        } catch (error) {
-            if (error.code === "ENOENT") {
-                throw Object.assign(new Error("Trabajo no encontrado."), {
-                    statusCode: 404,
-                    code: "JOB_NOT_FOUND"
-                });
-            }
-            throw error;
-        }
     }
 
-    async findByIdempotencyKey(type, idempotencyKey) {
-        try {
-            const files = await fs.readdir(this.directory);
-            for (const file of files) {
-                if (!file.endsWith(".json")) continue;
-                const job = JSON.parse(
-                    await fs.readFile(path.join(this.directory, file), "utf8")
-                );
-                if (job.type === type && job.idempotencyKey === idempotencyKey) {
-                    return job;
-                }
-            }
-            return null;
-        } catch (error) {
-            if (error.code === "ENOENT") return null;
-            throw error;
+    async create(type, payload = {}, idempotencyKey = "") {
+        this.assertType(type);
+        if (idempotencyKey) {
+            const existing = await this.repository.findByIdempotencyKey(type, idempotencyKey);
+            if (existing) return existing;
         }
+        return this.repository.create({
+            type,
+            payload,
+            idempotencyKey: idempotencyKey || null,
+            maxAttempts: 3
+        });
+    }
+
+    async get(id) {
+        this.assertId(id);
+        const job = await this.repository.get(id);
+        if (!job) {
+            throw Object.assign(new Error("Trabajo no encontrado."), {
+                statusCode: 404,
+                code: "JOB_NOT_FOUND"
+            });
+        }
+        return job;
+    }
+
+    async update(id, changes = {}) {
+        this.assertId(id);
+        if (!WORKFLOW_STATUSES.includes(changes.status)) {
+            throw Object.assign(new Error("Estado de trabajo inválido."), {
+                statusCode: 422,
+                code: "INVALID_JOB_STATUS"
+            });
+        }
+        const current = await this.get(id);
+        const update = {
+            status: changes.status,
+            result: changes.result || null,
+            errorCode: changes.errorCode || null,
+            errorMessage: changes.errorMessage || null,
+            attempt: Number.isInteger(changes.attempt) ? changes.attempt : current.attempt
+        };
+        if (["COMPLETED", "FAILED", "CANCELLED"].includes(changes.status)) {
+            update.completedAt = new Date().toISOString();
+        }
+        return this.repository.update(id, update);
+    }
+
+    async listByStatuses(statuses) {
+        for (const status of statuses) {
+            if (!WORKFLOW_STATUSES.includes(status)) {
+                throw Object.assign(new Error("Estado de trabajo inválido."), {
+                    statusCode: 422,
+                    code: "INVALID_JOB_STATUS"
+                });
+            }
+        }
+        return this.repository.listByStatuses(statuses);
     }
 }
 
 module.exports = {
     WorkflowJobService,
-    WORKFLOW_TYPES
+    WORKFLOW_TYPES,
+    WORKFLOW_STATUSES
 };

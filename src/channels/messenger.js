@@ -53,7 +53,9 @@ function parseMessengerEvent(event) {
 
         senderId: event.sender.id,
 
-        userMessage
+        userMessage,
+
+        externalMessageId: event.message.mid || null
 
     };
 

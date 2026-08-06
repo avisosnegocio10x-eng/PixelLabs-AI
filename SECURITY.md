@@ -11,12 +11,17 @@
 - Nombre de archivos saneado, UUID validado y formatos limitados.
 - Respuestas y logs sin tokens.
 - RLS y service-role solo backend.
+- Firma `X-Hub-Signature-256` obligatoria para webhooks de Meta en producción.
+- Mensajes y datos completos de clientes retirados de logs.
+- Tokens OAuth cifrados con AES-256-GCM antes de persistirse.
+- Tabla de tokens sin políticas de lectura para clientes autenticados.
+- Docker excluye `.env`, almacenamiento local y dependencias del contexto de build.
 
 ## Acción obligatoria antes de producción
 
 El repositorio ya contenía credenciales de correo dentro de `.env`. Aunque el archivo se elimine de la rama actual, esos valores pueden permanecer en el historial. Deben revocarse/rotarse desde el proveedor y reemplazarse en Render. No hace falta compartirlos conmigo.
 
-También debe añadirse verificación criptográfica de firma a los webhooks de Meta antes de ampliar el acceso público.
+Antes de desplegar debe configurarse `META_APP_SECRET`; sin él, los webhooks en producción responden `503` en vez de aceptar solicitudes sin firma.
 
 ## Secretos
 

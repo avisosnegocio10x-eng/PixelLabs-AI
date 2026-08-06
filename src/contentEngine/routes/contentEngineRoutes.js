@@ -10,6 +10,11 @@ const {
 const {
     createWorkflowJobController
 } = require("../controllers/workflowJobController");
+const { createCatalogController } = require("../controllers/catalogController");
+const { createContentController } = require("../controllers/contentController");
+const { VideoLibraryService } = require("../video/videoLibraryService");
+const { createVideoLibraryController } = require("../controllers/videoLibraryController");
+const { createSocialController } = require("../controllers/socialController");
 
 function createContentEngineRoutes() {
     const router = express.Router();
@@ -21,6 +26,11 @@ function createContentEngineRoutes() {
         videoCoordinator
     );
     const workflowJobController = createWorkflowJobController();
+    const catalogController = createCatalogController();
+    const contentController = createContentController();
+    const videoLibrary = new VideoLibraryService(uploadService);
+    const videoLibraryController = createVideoLibraryController(videoLibrary);
+    const socialController = createSocialController();
     const rawChunk = express.raw({
         type: ["application/octet-stream", "video/*"],
         limit: "128mb"
@@ -51,13 +61,50 @@ function createContentEngineRoutes() {
     );
     router.post("/videos/uploads/:uploadId/pause", videoUploadController.pause);
     router.post("/videos/uploads/:uploadId/resume", videoUploadController.resume);
+    router.get("/videos", videoLibraryController.videos);
+    router.get("/clips", videoLibraryController.clips);
+    router.post(
+        "/videos/:uploadId/clips/:clipId/render",
+        videoLibraryController.render
+    );
+    router.post(
+        "/videos/:uploadId/clips/:clipId/review",
+        videoLibraryController.review
+    );
 
     router.post("/jobs/:workflow", workflowJobController.create);
     router.get("/jobs/status/:jobId", workflowJobController.get);
+    router.patch("/jobs/status/:jobId", workflowJobController.update);
+
+    router.get("/catalog/products", catalogController.list);
+    router.get("/catalog/products/:reference", catalogController.get);
+    router.patch(
+        "/catalog/products/:reference/availability",
+        catalogController.setAvailability
+    );
+    router.post(
+        "/catalog/products/:reference/promotion-cooldown",
+        catalogController.setCooldown
+    );
+    router.post("/catalog/products/:reference/actions", catalogController.action);
+
+    router.get("/content", contentController.list);
+    router.post("/content", contentController.create);
+    router.post("/content/:contentId/review", contentController.review);
+    router.post("/content/:contentId/approve", contentController.approve);
+    router.post("/content/:contentId/reject", contentController.reject);
+    router.get("/social/capabilities", socialController.capabilities);
+    router.post(
+        "/content/:contentId/export/:platform",
+        socialController.exportVariant
+    );
 
     setImmediate(() => {
         videoCoordinator.recover().catch(error => {
             console.error("No se pudo recuperar la cola de video", error.message);
+        });
+        workflowJobController.runner.recover().catch(error => {
+            console.error("No se pudo recuperar la cola de flujos", error.message);
         });
     });
 

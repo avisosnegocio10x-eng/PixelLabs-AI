@@ -1,6 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { spawn } = require("child_process");
+const { VideoSignalAnalyzer } = require("./videoSignalAnalyzer");
 
 function runFfmpeg(args, options = {}) {
     return new Promise((resolve, reject) => {
@@ -33,6 +34,7 @@ class VideoProcessingCoordinator {
         );
         this.pending = [];
         this.running = new Map();
+        this.analyzer = options.analyzer || new VideoSignalAnalyzer();
     }
 
     async enqueue(uploadId) {
@@ -116,13 +118,24 @@ class VideoProcessingCoordinator {
                 .map(file => path.join(segmentDirectory, file));
 
             manifest = await this.uploadService.get(uploadId);
+            manifest.processingStage = "ANALYZING_SIGNALS";
+            manifest.progress = 70;
+            manifest.proxyPath = proxyPath;
+            manifest.segmentPaths = segments;
+            await this.uploadService.writeManifest(manifest);
+
+            const analysis = await this.analyzer.analyze(segments);
+
+            manifest = await this.uploadService.get(uploadId);
             manifest.status = "COMPLETED";
-            manifest.processingStage = "READY_FOR_ANALYSIS";
+            manifest.processingStage = "READY_FOR_REVIEW";
             manifest.progress = 100;
             manifest.proxyPath = proxyPath;
             manifest.segmentPaths = segments;
+            manifest.analysis = analysis;
             manifest.processedAt = new Date().toISOString();
             await this.uploadService.writeManifest(manifest);
+            await this.uploadService.repository.syncAnalysis?.(manifest);
         } catch (error) {
             manifest = await this.uploadService.get(uploadId);
             if (manifest.status !== "PAUSED") {

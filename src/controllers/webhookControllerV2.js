@@ -101,16 +101,6 @@ const receiveMessage = async (req, res) => {
 
                     }
 
-                    console.log("");
-
-                    console.log("===================================");
-
-                    console.log("NUEVO MENSAJE");
-
-                    console.log("===================================");
-
-                    console.log(data);
-
                     await processConversation(data);
 
                 }
@@ -189,19 +179,10 @@ const receiveMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.error("");
-
-        console.error("===================================");
-
-        console.error("ERROR EN WEBHOOK");
-
-        console.error("===================================");
-
-        console.error(
-            error.response?.data ||
-            error.message ||
-            error
-        );
+        console.error("Webhook processing failed", {
+            code: error.response?.data?.error?.code || error.code || "UNKNOWN",
+            message: error.message || "Unknown error"
+        });
 
         return res.sendStatus(500);
 

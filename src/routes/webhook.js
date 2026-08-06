@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { verifyMetaWebhookSignature } = require("../middleware/metaWebhookAuth");
 
 const {
     verifyWebhook,
@@ -10,6 +11,6 @@ const {
 router.get("/", verifyWebhook);
 
 // Mensajes que llegan desde Messenger
-router.post("/", receiveMessage);
+router.post("/", verifyMetaWebhookSignature, receiveMessage);
 
 module.exports = router;

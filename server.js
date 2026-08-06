@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const express = require("express");
 const cors = require("cors");
@@ -30,7 +30,12 @@ function createApp() {
             ? process.env.CORS_ORIGINS.split(",").map(value => value.trim())
             : false
     }));
-    app.use(express.json({ limit: "2mb" }));
+    app.use(express.json({
+        limit: "2mb",
+        verify: (req, res, buffer) => {
+            req.rawBody = Buffer.from(buffer);
+        }
+    }));
 
 // ============================
 // ARCHIVOS PÚBLICOS

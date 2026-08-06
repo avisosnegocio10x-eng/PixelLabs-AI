@@ -10,10 +10,6 @@ function generarResumen(conversation, userId) {
 
     const cliente = obtenerCliente(userId);
 
-    console.log("===== CLIENTE EN SUMMARY =====");
-    console.log(cliente);
-    console.log("==============================");
-
     return `
 =========================
 NUEVO CLIENTE PIXELLABS

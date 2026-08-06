@@ -14,8 +14,15 @@ La rama `agent/pixellabs-content-engine` incluye una primera base ejecutable:
 - Doce flujos n8n importables, desactivados por defecto.
 - Barrera determinista contra publicación de contenido riesgoso o sin aprobación.
 - Pruebas automáticas con `node:test`.
+- Catálogo real con búsqueda por referencia, disponibilidad y enfriamiento de promociones.
+- CRM Supabase para contactos, conversaciones, mensajes y oportunidades, con modo local compatible.
+- Ciclo de borrador, ocho revisiones, aprobación/rechazo humano y auditoría.
+- Detección de escenas, silencios y cuadros negros, propuesta de clips y render vertical con portada.
+- Worker persistente para los 12 flujos n8n y recuperación después de reinicios.
+- Variantes diferentes para Facebook, Instagram y TikTok en modo borrador.
+- Docker y Blueprint de Render con `ffmpeg`, disco persistente y secretos fuera del repositorio.
 
-Todavía no se publican contenidos reales. Las conexiones OAuth, credenciales de Supabase y aprobación de las apps de Meta/TikTok son bloqueos externos deliberados.
+Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, la aprobación es manual y los flujos n8n están desactivados. Las conexiones OAuth, credenciales de Supabase y aprobación de las apps de Meta/TikTok son bloqueos externos deliberados.
 
 ## Inicio local
 
@@ -41,8 +48,28 @@ Panel: `http://localhost:3000/admin`
 - `POST /admin/api/content-engine/videos/uploads/:id/pause`
 - `POST /admin/api/content-engine/videos/uploads/:id/resume`
 - `POST /admin/api/content-engine/jobs/:workflow`
+- `GET /admin/api/content-engine/catalog/products`
+- `PATCH /admin/api/content-engine/catalog/products/:reference/availability`
+- `POST /admin/api/content-engine/content`
+- `POST /admin/api/content-engine/content/:id/review`
+- `POST /admin/api/content-engine/content/:id/approve`
+- `GET /admin/api/content-engine/videos`
+- `GET /admin/api/content-engine/clips`
+- `POST /admin/api/content-engine/videos/:uploadId/clips/:clipId/render`
+- `POST /admin/api/content-engine/videos/:uploadId/clips/:clipId/review`
+- `GET /admin/api/content-engine/social/capabilities`
+- `POST /admin/api/content-engine/content/:id/export/:platform`
 
 Todas requieren `Authorization: Bearer <ADMIN_API_TOKEN>`.
+
+## Validación
+
+```bash
+npm ci
+npm run check
+```
+
+`npm run check` valida sintaxis, 12 flujos n8n inactivos, pruebas HTTP, seguridad, video real con `ffmpeg` y reglas de aprobación.
 
 ## Documentación
 

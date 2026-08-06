@@ -26,6 +26,22 @@ Los módulos están en `src/contentEngine/`:
 - `review`: decisión final y guardia de publicación.
 - `services`: configuración y cola de flujos.
 - `video`: rangos, subida, validación y procesamiento asíncrono.
+- `social`: capacidades oficiales, variantes por plataforma, cifrado de tokens y clientes API sin conexión automática.
+- `repositories`: adaptadores equivalentes para archivos locales y Supabase.
+
+## Flujo ejecutable
+
+```text
+Chatbot / Panel / n8n
+        -> API administrativa protegida
+        -> catálogo + CRM + biblioteca
+        -> cola persistente
+        -> video: proxy -> segmentos -> señales -> clips -> render
+        -> 8 revisiones -> aprobación humana
+        -> paquete por plataforma (sin publicación externa)
+```
+
+El backend ejecuta trabajos idempotentes y recupera estados `QUEUED`/`RUNNING` al reiniciar. El flujo de publicación comprueba primero el interruptor global, `autoPublish` y `approvalMode`; en la etapa actual siempre termina bloqueado sin llamadas externas.
 
 ## Decisiones
 

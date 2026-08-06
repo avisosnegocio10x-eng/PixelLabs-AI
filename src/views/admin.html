@@ -27,9 +27,12 @@
             </div>
             <nav aria-label="Secciones">
                 <a href="#dashboard" class="nav-link active">Dashboard</a>
-                <a href="#settings" class="nav-link">Configuración</a>
+                <a href="#approvals" class="nav-link">Aprobaciones</a>
+                <a href="#catalog" class="nav-link">Catálogo</a>
                 <a href="#videos" class="nav-link">Videos originales</a>
-                <a href="#clients" class="nav-link">Clientes</a>
+                <a href="#clips" class="nav-link">Clips y reels</a>
+                <a href="#clients" class="nav-link">CRM</a>
+                <a href="#settings" class="nav-link">Configuración</a>
             </nav>
             <div class="sidebar-footer">
                 <span id="engineStatus" class="status-pill">Comprobando…</span>
@@ -58,6 +61,26 @@
                     <article class="metric-card"><span>Cotizaciones</span><strong id="cotizaciones">0</strong></article>
                     <article class="metric-card accent"><span>Publicación automática</span><strong id="autoPublishMetric">Apagada</strong></article>
                 </div>
+            </section>
+
+            <section id="approvals" class="section-block panel">
+                <div class="section-heading">
+                    <div><span class="eyebrow">CONTROL HUMANO</span><h2>Aprobaciones pendientes</h2></div>
+                    <button id="refreshApprovals" class="secondary-button">Actualizar</button>
+                </div>
+                <p class="section-copy">Nada se programa ni se publica desde aquí sin una aprobación explícita.</p>
+                <div id="approvalList" class="record-list"></div>
+            </section>
+
+            <section id="catalog" class="section-block panel">
+                <div class="section-heading">
+                    <div><span class="eyebrow">PRODUCTOS REALES</span><h2>Catálogo inteligente</h2></div>
+                    <div class="compact-actions">
+                        <input id="catalogSearch" type="search" placeholder="Buscar nombre o LLV-024">
+                        <button id="searchCatalog" class="secondary-button">Buscar</button>
+                    </div>
+                </div>
+                <div id="catalogList" class="record-list"></div>
             </section>
 
             <section id="settings" class="section-block panel">
@@ -106,6 +129,16 @@
                 </form>
                 <div class="progress-track" aria-label="Progreso de subida"><span id="uploadProgress"></span></div>
                 <div id="uploadMessage" class="inline-message" role="status">Ningún video en proceso.</div>
+                <div id="videoList" class="record-list"></div>
+            </section>
+
+            <section id="clips" class="section-block panel">
+                <div class="section-heading">
+                    <div><span class="eyebrow">BIBLIOTECA EDITADA</span><h2>Clips y reels</h2></div>
+                    <button id="refreshClips" class="secondary-button">Actualizar</button>
+                </div>
+                <p class="section-copy">Los clips nuevos requieren render, revisión de privacidad y aprobación manual.</p>
+                <div id="clipList" class="record-list"></div>
             </section>
 
             <section id="clients" class="section-block">

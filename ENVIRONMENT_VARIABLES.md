@@ -20,4 +20,9 @@ Usa `.env.example` como referencia.
 
 `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_API_VERSION`, IDs de página/cuenta, credenciales OAuth de TikTok, `N8N_WEBHOOK_SECRET` y `N8N_BASE_URL`.
 
+- `SOCIAL_PUBLISH_MODE`: debe permanecer `draft`.
+- `SOCIAL_TOKEN_ENCRYPTION_KEY`: secreto base64 de 32 bytes; Render lo genera.
+- `PIXELLABS_API_URL`: URL pública del backend para n8n.
+- `PIXELLABS_ADMIN_API_TOKEN`: mismo secreto administrativo, configurado dentro de n8n, nunca exportado en JSON.
+
 `CONTENT_ENGINE_AUTO_PUBLISH` no sustituye la configuración de base de datos ni las barreras; la publicación continúa apagada hasta aprobación explícita.

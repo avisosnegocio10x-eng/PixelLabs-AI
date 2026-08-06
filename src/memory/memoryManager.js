@@ -133,6 +133,26 @@ function setClientName(userId, nombre) {
 
 }
 
+function setClientPlatform(userId, plataforma) {
+
+    crearConversacionSiNoExiste(userId);
+
+    conversations[userId].plataforma = plataforma;
+
+    guardarConversaciones();
+
+}
+
+function setAiEnabled(userId, estado) {
+
+    crearConversacionSiNoExiste(userId);
+
+    conversations[userId].iaActiva = Boolean(estado);
+
+    guardarConversaciones();
+
+}
+
 // ======================================
 
 function estaEsperandoNombre(userId) {
@@ -194,6 +214,10 @@ module.exports = {
     getClient,
 
     setClientName,
+
+    setClientPlatform,
+
+    setAiEnabled,
 
     estaEsperandoNombre,
 
