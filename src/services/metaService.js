@@ -1,5 +1,11 @@
 const axios = require("axios");
 
+const META_GRAPH_API_VERSION =
+    process.env.META_GRAPH_API_VERSION || "v23.0";
+
+const graphUrl = path =>
+    `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${path}`;
+
 const sendMessage = async (
     plataforma,
     recipientId,
@@ -19,7 +25,7 @@ const sendMessage = async (
 
             await axios.post(
 
-                "https://graph.facebook.com/v23.0/me/messages",
+                graphUrl("me/messages"),
 
                 {
 
@@ -63,7 +69,7 @@ const sendMessage = async (
 
             await axios.post(
 
-                `https://graph.facebook.com/v23.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`),
 
                 {
 

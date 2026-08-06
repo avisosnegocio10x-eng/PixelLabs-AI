@@ -1,65 +1,121 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>PixelLabs Admin</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelLabs · Centro de Contenido</title>
     <link rel="stylesheet" href="/style.css">
-
 </head>
-
 <body>
-
-    <div class="container">
-
-        <h1>🤖 PixelLabs Admin</h1>
-
-        <p>Panel Administrativo</p>
-
-        <div class="cards">
-
-            <div class="card">
-
-                <h3>👥 Clientes</h3>
-
-                <h2 id="clientes">0</h2>
-
-            </div>
-
-            <div class="card">
-
-                <h3>🤖 IA Activa</h3>
-
-                <h2 id="ia">0</h2>
-
-            </div>
-
-            <div class="card">
-
-                <h3>📩 Cotizaciones</h3>
-
-                <h2 id="cotizaciones">0</h2>
-
-            </div>
-
-        </div>
-
-        <hr>
-
-        <h2>Clientes</h2>
-
-        <div id="listaClientes"></div>
-
+    <div id="authGate" class="auth-gate">
+        <form id="authForm" class="auth-card">
+            <span class="eyebrow">PIXELLABS</span>
+            <h1>Panel administrativo</h1>
+            <p>Introduce el token administrativo configurado en el servidor. No lo compartas por chat.</p>
+            <label for="adminToken">Token de acceso</label>
+            <input id="adminToken" type="password" autocomplete="current-password" required>
+            <button type="submit" class="primary-button">Entrar</button>
+            <span id="authError" class="form-error" role="alert"></span>
+        </form>
     </div>
 
+    <div id="appShell" class="app-shell is-hidden">
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="brand-mark">P</span>
+                <div><strong>PixelLabs</strong><small>Content Engine</small></div>
+            </div>
+            <nav aria-label="Secciones">
+                <a href="#dashboard" class="nav-link active">Dashboard</a>
+                <a href="#settings" class="nav-link">Configuración</a>
+                <a href="#videos" class="nav-link">Videos originales</a>
+                <a href="#clients" class="nav-link">Clientes</a>
+            </nav>
+            <div class="sidebar-footer">
+                <span id="engineStatus" class="status-pill">Comprobando…</span>
+                <button id="logoutButton" class="text-button">Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <span class="eyebrow">CENTRO DE CONTENIDO</span>
+                    <h1>Control de PixelLabs</h1>
+                    <p>Contenido, videos y atención al cliente desde un solo lugar.</p>
+                </div>
+                <button id="emergencyStop" class="danger-button">Detener automatización</button>
+            </header>
+
+            <section id="dashboard" class="section-block">
+                <div class="section-heading">
+                    <div><span class="eyebrow">RESUMEN</span><h2>Dashboard</h2></div>
+                    <span id="lastUpdate" class="muted">Sin actualizar</span>
+                </div>
+                <div class="metric-grid">
+                    <article class="metric-card"><span>Clientes</span><strong id="clientes">0</strong></article>
+                    <article class="metric-card"><span>IA activa</span><strong id="ia">0</strong></article>
+                    <article class="metric-card"><span>Cotizaciones</span><strong id="cotizaciones">0</strong></article>
+                    <article class="metric-card accent"><span>Publicación automática</span><strong id="autoPublishMetric">Apagada</strong></article>
+                </div>
+            </section>
+
+            <section id="settings" class="section-block panel">
+                <div class="section-heading">
+                    <div><span class="eyebrow">AUTOMATIZACIÓN SEGURA</span><h2>Configuración diaria</h2></div>
+                    <button id="saveSettings" class="primary-button">Guardar cambios</button>
+                </div>
+                <p class="section-copy">Las cantidades son objetivos máximos. Si no hay contenido aprobado, el sistema publicará menos.</p>
+
+                <div class="settings-grid">
+                    <label>Publicaciones estáticas por día<input id="staticPosts" type="number" min="0" max="20"></label>
+                    <label>Carruseles por día<input id="carousels" type="number" min="0" max="20"></label>
+                    <label>Historias por día<input id="stories" type="number" min="0" max="20"></label>
+                    <label>Reels por día<input id="reels" type="number" min="0" max="20"></label>
+                    <label>Videos de TikTok por día<input id="tiktokVideos" type="number" min="0" max="20"></label>
+                    <label>Facebook por día<input id="facebookPosts" type="number" min="0" max="20"></label>
+                    <label>Instagram por día<input id="instagramPosts" type="number" min="0" max="20"></label>
+                    <label>Modo de aprobación
+                        <select id="approvalMode">
+                            <option value="manual">Manual</option>
+                            <option value="partial">Parcial</option>
+                            <option value="advanced">Avanzado</option>
+                        </select>
+                    </label>
+                    <label>Puntaje para revisión humana<input id="humanApproval" type="number" min="0" max="100"></label>
+                    <label>Puntaje para aprobación automática<input id="automaticApproval" type="number" min="0" max="100"></label>
+                </div>
+
+                <div class="toggle-row">
+                    <label class="toggle-card"><input id="autoPublish" type="checkbox"><span>Publicación automática global</span></label>
+                    <label class="toggle-card"><input id="facebookAutomation" type="checkbox"><span>Facebook</span></label>
+                    <label class="toggle-card"><input id="instagramAutomation" type="checkbox"><span>Instagram</span></label>
+                    <label class="toggle-card"><input id="tiktokAutomation" type="checkbox"><span>TikTok</span></label>
+                </div>
+                <div id="settingsMessage" class="inline-message" role="status"></div>
+            </section>
+
+            <section id="videos" class="section-block panel">
+                <div class="section-heading">
+                    <div><span class="eyebrow">BIBLIOTECA FUENTE</span><h2>Subir video largo</h2></div>
+                </div>
+                <p class="section-copy">La subida se divide en fragmentos y puede continuar desde el último bloque enviado.</p>
+                <form id="videoUploadForm" class="upload-form">
+                    <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/x-matroska" required>
+                    <button class="primary-button" type="submit">Iniciar subida</button>
+                </form>
+                <div class="progress-track" aria-label="Progreso de subida"><span id="uploadProgress"></span></div>
+                <div id="uploadMessage" class="inline-message" role="status">Ningún video en proceso.</div>
+            </section>
+
+            <section id="clients" class="section-block">
+                <div class="section-heading">
+                    <div><span class="eyebrow">CRM ACTUAL</span><h2>Clientes</h2></div>
+                </div>
+                <div id="listaClientes" class="client-grid"></div>
+            </section>
+        </main>
+    </div>
     <script src="/admin.js"></script>
-
 </body>
-
 </html>
