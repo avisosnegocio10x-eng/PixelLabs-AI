@@ -40,5 +40,14 @@ La suite ampliada incluye:
 - Métricas: ventas/mensajes por encima de visualizaciones aisladas.
 - HTTP real de radar, calendario y resumen de métricas.
 - Supabase real: cinco migraciones, RLS, relaciones, índices, bucket privado y prueba transaccional con rollback.
+- Perfil Render Free: sin disco ni plan pagado, Supabase obligatorio, API
+  disponible y endpoints de video bloqueados con 503 explícito.
+- Política de runtime que impide ejecutar FFmpeg sobre almacenamiento efímero en
+  producción.
+- Reconstrucción del contexto conversacional persistido en CRM.
 
-Estado actual: 51/51 pruebas automáticas. Pendientes al conectar servicios: archivos reales de 10 minutos y una hora, transcripción semántica, OAuth sandbox, errores/reintentos reales de Meta/TikTok y métricas obtenidas desde cuentas reales.
+Pendientes al conectar servicios: archivos reales de 10 minutos y una hora,
+transcripción semántica, OAuth sandbox, errores/reintentos reales de Meta/TikTok
+y métricas obtenidas desde cuentas reales.
+
+Última validación local completa: **59/59 pruebas aprobadas**.

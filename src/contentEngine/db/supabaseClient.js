@@ -2,10 +2,10 @@ const { createClient } = require("@supabase/supabase-js");
 
 let client;
 
-function hasSupabaseConfiguration() {
+function hasSupabaseConfiguration(environment = process.env) {
     return Boolean(
-        process.env.SUPABASE_URL &&
-        process.env.SUPABASE_SERVICE_ROLE_KEY
+        environment.SUPABASE_URL &&
+        environment.SUPABASE_SERVICE_ROLE_KEY
     );
 }
 

@@ -26,6 +26,10 @@ La rama `agent/pixellabs-content-engine` incluye una base ejecutable conectada a
 - Corrección automática limitada a texto de bajo riesgo; privacidad, legal, archivos y duplicados siempre pasan a una persona.
 - Métricas normalizadas y optimización semanal que prioriza ingresos, ventas, cotizaciones y mensajes.
 - Cinco migraciones aplicadas y verificadas en el proyecto Supabase conectado, sin avisos de seguridad.
+- Blueprint gratuito separado para API/panel/chatbot/CRM, sin disco ni recursos
+  pagados, y bloqueo seguro del procesamiento de video pesado.
+- Contexto del chatbot reconstruido desde el CRM de Supabase después de
+  reinicios; JSON únicamente como fallback local.
 
 Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, la aprobación es manual y los flujos n8n están desactivados. Falta colocar la URL y la service-role de Supabase directamente en el entorno del backend desplegado; OAuth y la aprobación de las apps de Meta/TikTok siguen siendo bloqueos externos deliberados.
 
@@ -39,6 +43,9 @@ npm start
 ```
 
 Configura al menos `ADMIN_API_TOKEN`. En producción también son obligatorios `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+
+Para probar sin cargos usa `render.free.yaml`. No procesa videos largos en la
+nube; consulta `DEPLOYMENT_FREE.md` antes de activar infraestructura pagada.
 
 Panel: `http://localhost:3000/admin`
 
@@ -84,4 +91,4 @@ npm run check
 
 ## Documentación
 
-Consulta `ARCHITECTURE.md`, `DATABASE.md`, `VIDEO_PROCESSING.md`, `SOCIAL_APIS.md`, `N8N_WORKFLOWS.md`, `SECURITY.md`, `TESTING.md` y `DEPLOYMENT.md`.
+Consulta `ARCHITECTURE.md`, `DATABASE.md`, `VIDEO_PROCESSING.md`, `SOCIAL_APIS.md`, `N8N_WORKFLOWS.md`, `SECURITY.md`, `TESTING.md`, `DEPLOYMENT.md` y `DEPLOYMENT_FREE.md`.

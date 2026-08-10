@@ -1,19 +1,52 @@
 # Despliegue
 
+Existen dos Blueprints independientes:
+
+- `render.free.yaml`: API gratuita para desarrollo y pruebas, sin disco y con
+  video pesado desactivado. Usa `Dockerfile.free`, que no instala FFmpeg.
+- `render.yaml`: perfil combinado Starter con disco para una futura activación
+  pagada.
+
+Ninguno tiene Auto Deploy habilitado. Guardar estos archivos no crea recursos ni
+genera cargos. La comparación completa está en `DEPLOYMENT_FREE.md`.
+
 ## Backend en Render
 
-- `Dockerfile` instala Node 22, `ffmpeg`, `ffprobe` y `dumb-init`.
+- `Dockerfile` instala Node 22, `ffmpeg`, `ffprobe` y `dumb-init` para el perfil
+  pagado/local.
 - `render.yaml` fija la rama `agent/pixellabs-content-engine` y desactiva Auto Deploy.
-- Health inicial: `GET /`
+- Health de despliegue: `GET /healthz`, que comprueba Supabase sin exponer
+  credenciales.
 - Disco persistente de 10 GB montado en `/app/storage`.
+- `CONTENT_ENGINE_VIDEO_MODE=local` y almacenamiento marcado como durable.
+- `REQUIRE_SUPABASE=true`; no existe fallback JSON en producción.
 - `ADMIN_API_TOKEN`, `N8N_WEBHOOK_SECRET` y `SOCIAL_TOKEN_ENCRYPTION_KEY` se generan en Render.
 - Supabase se solicita con `sync: false`; los valores no se guardan en Git.
 
-Para videos de varias horas es preferible usar almacenamiento de objetos y un worker separado cuando crezca la carga. La configuración inicial usa un único servicio y limita video a un trabajo concurrente, que es la opción de menor costo y menor complejidad.
+Este perfil conserva la implementación existente, pero no debe activarse todavía.
+Para videos de varias horas se recomienda separar API, almacenamiento de objetos
+y worker cuando el volumen justifique el costo.
 
 ## Costo mínimo viable
 
-Render solo permite disco persistente en servicios pagados. El filesystem del plan gratuito es efímero y perdería subidas al reiniciar, por lo que no debe usarse para la biblioteca real. La documentación oficial de Render indica un costo de disco de **$0.25 por GB al mes**; 10 GB equivalen a $2.50/mes más el cómputo `starter`. No se crea ni cobra ningún recurso al guardar este Blueprint.
+Render solo permite disco persistente en servicios pagados. El filesystem del
+plan gratuito es efímero y perdería subidas al reiniciar, por lo que el perfil
+gratuito bloquea los endpoints de video en vez de aceptar datos que podrían
+perderse. A los precios consultados el 10 de agosto de 2026, Starter cuesta cerca
+de $7/mes y el disco $0.25 por GB/mes: 10 GB equivalen a $2.50, para un total
+aproximado de $9.50/mes.
+
+## Perfil gratuito
+
+El perfil gratuito conserva la persistencia en Supabase para backend, panel,
+chatbot, catálogo, CRM, webhooks, contenido y colas. No escribe archivos
+permanentes en Render. La prueba automatizada garantiza que ese Blueprint:
+
+- use `plan: free`;
+- no declare `disk`;
+- mantenga publicación real apagada;
+- exija Supabase;
+- deje `CONTENT_ENGINE_VIDEO_MODE=disabled`.
 
 ## Supabase
 

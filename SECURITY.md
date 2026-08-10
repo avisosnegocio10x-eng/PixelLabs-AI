@@ -16,6 +16,9 @@
 - Tokens OAuth cifrados con AES-256-GCM antes de persistirse.
 - Tabla de tokens sin políticas de lectura para clientes autenticados.
 - Docker excluye `.env`, almacenamiento local y dependencias del contexto de build.
+- Producción exige Supabase y no puede caer silenciosamente a JSON efímero.
+- Render Free bloquea video pesado; una configuración inválida no habilita
+  escritura en filesystem temporal.
 
 ## Acción obligatoria antes de producción
 

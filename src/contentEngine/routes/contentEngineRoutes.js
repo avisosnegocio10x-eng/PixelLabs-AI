@@ -20,21 +20,29 @@ const {
     getSupabaseAdminClient,
     hasSupabaseConfiguration
 } = require("../db/supabaseClient");
+const {
+    resolveVideoRuntime,
+    disabledVideoResponse
+} = require("../video/videoRuntimePolicy");
 
 function createContentEngineRoutes() {
     const router = express.Router();
     const settingsController = createSettingsController();
-    const uploadService = new UploadSessionService();
-    const videoCoordinator = new VideoProcessingCoordinator(uploadService);
-    const videoUploadController = createVideoUploadController(
-        uploadService,
-        videoCoordinator
-    );
+    const videoRuntime = resolveVideoRuntime();
+    const uploadService = videoRuntime.enabled ? new UploadSessionService() : null;
+    const videoCoordinator = uploadService
+        ? new VideoProcessingCoordinator(uploadService)
+        : null;
+    const videoUploadController = uploadService
+        ? createVideoUploadController(uploadService, videoCoordinator)
+        : null;
     const workflowJobController = createWorkflowJobController();
     const catalogController = createCatalogController();
     const contentController = createContentController();
-    const videoLibrary = new VideoLibraryService(uploadService);
-    const videoLibraryController = createVideoLibraryController(videoLibrary);
+    const videoLibrary = uploadService ? new VideoLibraryService(uploadService) : null;
+    const videoLibraryController = videoLibrary
+        ? createVideoLibraryController(videoLibrary)
+        : null;
     const socialController = createSocialController();
     const operationsController = createOperationsController();
     const rawChunk = express.raw({
@@ -59,7 +67,8 @@ function createContentEngineRoutes() {
                 service: "pixellabs-content-engine",
                 persistence: configured ? "supabase" : "local",
                 databaseReachable,
-                autoPublishDefault: false
+                autoPublishDefault: false,
+                videoRuntime
             });
         } catch (error) { next(error); }
     });
@@ -75,29 +84,49 @@ function createContentEngineRoutes() {
     router.get("/metrics/summary", operationsController.metricsSummary);
     router.post("/metrics", operationsController.recordMetrics);
 
-    router.post("/videos/uploads", videoUploadController.create);
-    router.get("/videos/uploads/:uploadId", videoUploadController.status);
-    router.put(
-        "/videos/uploads/:uploadId/chunks",
-        rawChunk,
-        videoUploadController.chunk
-    );
-    router.post(
-        "/videos/uploads/:uploadId/complete",
-        videoUploadController.complete
-    );
-    router.post("/videos/uploads/:uploadId/pause", videoUploadController.pause);
-    router.post("/videos/uploads/:uploadId/resume", videoUploadController.resume);
-    router.get("/videos", videoLibraryController.videos);
-    router.get("/clips", videoLibraryController.clips);
-    router.post(
-        "/videos/:uploadId/clips/:clipId/render",
-        videoLibraryController.render
-    );
-    router.post(
-        "/videos/:uploadId/clips/:clipId/review",
-        videoLibraryController.review
-    );
+    if (videoRuntime.enabled) {
+        router.post("/videos/uploads", videoUploadController.create);
+        router.get("/videos/uploads/:uploadId", videoUploadController.status);
+        router.put(
+            "/videos/uploads/:uploadId/chunks",
+            rawChunk,
+            videoUploadController.chunk
+        );
+        router.post(
+            "/videos/uploads/:uploadId/complete",
+            videoUploadController.complete
+        );
+        router.post("/videos/uploads/:uploadId/pause", videoUploadController.pause);
+        router.post("/videos/uploads/:uploadId/resume", videoUploadController.resume);
+        router.get("/videos", videoLibraryController.videos);
+        router.get("/clips", videoLibraryController.clips);
+        router.post(
+            "/videos/:uploadId/clips/:clipId/render",
+            videoLibraryController.render
+        );
+        router.post(
+            "/videos/:uploadId/clips/:clipId/review",
+            videoLibraryController.review
+        );
+    } else {
+        const unavailable = (req, res) => {
+            res.status(503).json(disabledVideoResponse(videoRuntime));
+        };
+        router.get("/videos", (req, res) => {
+            res.json({ ok: true, videos: [], videoRuntime });
+        });
+        router.get("/clips", (req, res) => {
+            res.json({ ok: true, clips: [], videoRuntime });
+        });
+        router.post("/videos/uploads", unavailable);
+        router.get("/videos/uploads/:uploadId", unavailable);
+        router.put("/videos/uploads/:uploadId/chunks", rawChunk, unavailable);
+        router.post("/videos/uploads/:uploadId/complete", unavailable);
+        router.post("/videos/uploads/:uploadId/pause", unavailable);
+        router.post("/videos/uploads/:uploadId/resume", unavailable);
+        router.post("/videos/:uploadId/clips/:clipId/render", unavailable);
+        router.post("/videos/:uploadId/clips/:clipId/review", unavailable);
+    }
 
     router.post("/jobs/:workflow", workflowJobController.create);
     router.get("/jobs/status/:jobId", workflowJobController.get);
@@ -127,9 +156,11 @@ function createContentEngineRoutes() {
     );
 
     setImmediate(() => {
-        videoCoordinator.recover().catch(error => {
-            console.error("No se pudo recuperar la cola de video", error.message);
-        });
+        if (videoCoordinator) {
+            videoCoordinator.recover().catch(error => {
+                console.error("No se pudo recuperar la cola de video", error.message);
+            });
+        }
         workflowJobController.runner.recover().catch(error => {
             console.error("No se pudo recuperar la cola de flujos", error.message);
         });

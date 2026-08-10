@@ -9,8 +9,15 @@ const webhookRoutes = require("./src/routes/webhook");
 const adminRoutes = require("./src/routes/adminRoutes");
 const legalRoutes = require("./src/routes/legalRoutes");
 const { errorHandler } = require("./src/middleware/errorHandler");
+const {
+    validateRuntimeConfiguration
+} = require("./src/config/runtimeValidation");
+const {
+    getSupabaseAdminClient
+} = require("./src/contentEngine/db/supabaseClient");
 
 function createApp() {
+    const runtimeConfiguration = validateRuntimeConfiguration();
     const app = express();
 
     if (process.env.TRUST_PROXY === "true") {
@@ -36,6 +43,31 @@ function createApp() {
             req.rawBody = Buffer.from(buffer);
         }
     }));
+
+    app.get("/healthz", async (req, res) => {
+        try {
+            let databaseReachable = false;
+            if (runtimeConfiguration.supabaseConfigured) {
+                const { error } = await getSupabaseAdminClient()
+                    .from("content_settings")
+                    .select("scope", { head: true, count: "exact" })
+                    .eq("scope", "global");
+                if (error) throw error;
+                databaseReachable = true;
+            }
+            res.json({
+                ok: true,
+                databaseReachable,
+                videoMode: runtimeConfiguration.videoRuntime.mode,
+                autoPublish: false
+            });
+        } catch (error) {
+            res.status(503).json({
+                ok: false,
+                error: "DEPENDENCY_UNAVAILABLE"
+            });
+        }
+    });
 
 // ============================
 // ARCHIVOS PÚBLICOS

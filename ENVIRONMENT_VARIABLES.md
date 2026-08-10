@@ -7,6 +7,8 @@ Usa `.env.example` como referencia.
 - `ADMIN_API_TOKEN`: secreto largo para el API del panel.
 - `SUPABASE_URL`: obligatoria en producción.
 - `SUPABASE_SERVICE_ROLE_KEY`: obligatoria en producción y exclusiva del backend.
+- `REQUIRE_SUPABASE`: usar `true` en cualquier despliegue; evita persistencia
+  efímera si faltan las variables de Supabase.
 
 ## Chatbot existente
 
@@ -15,6 +17,11 @@ Usa `.env.example` como referencia.
 ## Video
 
 `CONTENT_ENGINE_MAX_UPLOAD_BYTES`, `CONTENT_ENGINE_CHUNK_BYTES`, `CONTENT_ENGINE_UPLOAD_DIR`, `CONTENT_ENGINE_WORK_DIR`, `CONTENT_ENGINE_MAX_CONCURRENT_VIDEO_JOBS`, `CONTENT_ENGINE_RETENTION_DAYS`.
+
+- `CONTENT_ENGINE_VIDEO_MODE`: `local` o `disabled`. Producción usa `disabled`
+  por defecto si no se define.
+- `CONTENT_ENGINE_LOCAL_STORAGE_DURABLE`: debe ser `true` para habilitar video
+  local en producción. No lo uses en Render Free.
 
 ## Sociales y n8n
 

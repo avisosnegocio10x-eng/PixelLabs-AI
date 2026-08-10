@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: pixellabs-content-engine
+    name: pixellabs-content-engine-free
     runtime: docker
-    plan: starter
+    plan: free
     branch: agent/pixellabs-content-engine
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.free
     healthCheckPath: /healthz
     autoDeployTrigger: off
     numInstances: 1
@@ -21,16 +21,16 @@ services:
         value: "false"
       - key: SOCIAL_PUBLISH_MODE
         value: draft
-      - key: CONTENT_ENGINE_UPLOAD_DIR
-        value: /app/storage/uploads
-      - key: CONTENT_ENGINE_WORK_DIR
-        value: /app/storage/work
       - key: CONTENT_ENGINE_VIDEO_MODE
-        value: local
+        value: disabled
       - key: CONTENT_ENGINE_LOCAL_STORAGE_DURABLE
-        value: "true"
+        value: "false"
+      - key: CONTENT_ENGINE_UPLOAD_DIR
+        value: /tmp/pixellabs-content/uploads
+      - key: CONTENT_ENGINE_WORK_DIR
+        value: /tmp/pixellabs-content/work
       - key: CONTENT_ENGINE_MAX_CONCURRENT_VIDEO_JOBS
-        value: "1"
+        value: "0"
       - key: ADMIN_API_TOKEN
         generateValue: true
       - key: N8N_WEBHOOK_SECRET
@@ -43,7 +43,3 @@ services:
         sync: false
       - key: SUPABASE_STORAGE_BUCKET
         value: pixellabs-content
-    disk:
-      name: pixellabs-content-data
-      mountPath: /app/storage
-      sizeGB: 10

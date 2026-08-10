@@ -81,6 +81,36 @@ function crearConversacionSiNoExiste(userId) {
 
 }
 
+function hydrateConversation(userId, snapshot = {}) {
+
+    conversations[userId] = {
+
+        id: String(userId),
+
+        nombre: snapshot.nombre || null,
+
+        plataforma: snapshot.plataforma || "messenger",
+
+        iaActiva: snapshot.iaActiva !== false,
+
+        correoEnviado: Boolean(snapshot.correoEnviado),
+
+        esperandoNombre: Boolean(snapshot.esperandoNombre),
+
+        messages: (snapshot.messages || []).map(message => ({
+            role: message.role,
+            message: message.message,
+            timestamp: message.timestamp || Date.now()
+        }))
+
+    };
+
+    guardarConversaciones();
+
+    return conversations[userId];
+
+}
+
 // ======================================
 
 function addMessage(userId, role, message) {
@@ -208,6 +238,8 @@ function getAllConversations() {
 module.exports = {
 
     addMessage,
+
+    hydrateConversation,
 
     getConversation,
 

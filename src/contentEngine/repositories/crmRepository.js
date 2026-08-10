@@ -32,6 +32,14 @@ function mapContact(row) {
     };
 }
 
+function mapConversationMessage(row) {
+    return {
+        role: row.role === "agent" ? "assistant" : row.role,
+        message: row.body || "",
+        timestamp: row.occurred_at ? Date.parse(row.occurred_at) : Date.now()
+    };
+}
+
 class FileCrmRepository {
     async listContacts() {
         return Object.values(memory.getAllConversations());
@@ -48,6 +56,31 @@ class FileCrmRepository {
 
     async recordMessage() {
         return null;
+    }
+
+    async getConversationState(platform, externalId) {
+        memory.setClientPlatform(externalId, normalizePlatform(platform));
+        const contact = memory.getClient(externalId);
+        return {
+            contact,
+            messages: memory.getConversation(externalId),
+            waitingForName: Boolean(contact.esperandoNombre)
+        };
+    }
+
+    async setConversationState(platform, externalId, changes = {}) {
+        memory.setClientPlatform(externalId, normalizePlatform(platform));
+        if (Object.hasOwn(changes, "displayName")) {
+            memory.setClientName(externalId, changes.displayName);
+        }
+        if (Object.hasOwn(changes, "aiEnabled")) {
+            memory.setAiEnabled(externalId, changes.aiEnabled);
+        }
+        if (Object.hasOwn(changes, "waitingForName")) {
+            memory.setEsperandoNombre(externalId, changes.waitingForName);
+        }
+        if (changes.emailSent) memory.marcarCorreoEnviado(externalId);
+        return memory.getClient(externalId);
     }
 
     async updateContact(platform, externalId, changes) {
@@ -141,7 +174,63 @@ class SupabaseCrmRepository {
         if (error && !(error.code === "23505" && record.external_message_id)) {
             throw new Error(`No se pudo guardar el mensaje CRM: ${error.message}`);
         }
-        return { contact, conversation, message: data };
+        return {
+            contact,
+            conversation,
+            message: data,
+            duplicate: Boolean(error?.code === "23505")
+        };
+    }
+
+    async getContact(platform, externalId) {
+        const normalizedPlatform = normalizePlatform(platform);
+        const { data, error } = await this.client.from("crm_contacts")
+            .select("*")
+            .eq("platform", normalizedPlatform)
+            .eq("external_id", String(externalId))
+            .maybeSingle();
+        if (error) throw new Error(`No se pudo leer el contacto CRM: ${error.message}`);
+        return data || this.upsertContact(normalizedPlatform, externalId);
+    }
+
+    async getConversationState(platform, externalId) {
+        const contact = await this.getContact(platform, externalId);
+        const conversation = await this.ensureConversation(
+            contact,
+            platform,
+            externalId
+        );
+        const { data, error } = await this.client.from("crm_messages")
+            .select("role,body,occurred_at")
+            .eq("conversation_id", conversation.id)
+            .order("occurred_at", { ascending: false })
+            .limit(100);
+        if (error) throw new Error(`No se pudo recuperar la conversación CRM: ${error.message}`);
+        return {
+            contact: mapContact(contact),
+            messages: (data || []).reverse().map(mapConversationMessage),
+            waitingForName: Boolean(contact.metadata?.waitingForName)
+        };
+    }
+
+    async setConversationState(platform, externalId, changes = {}) {
+        const current = await this.getContact(platform, externalId);
+        const metadata = { ...(current.metadata || {}) };
+        if (Object.hasOwn(changes, "waitingForName")) {
+            metadata.waitingForName = Boolean(changes.waitingForName);
+        }
+        return mapContact(await this.upsertContact(platform, externalId, {
+            ...(Object.hasOwn(changes, "displayName")
+                ? { displayName: changes.displayName }
+                : {}),
+            ...(Object.hasOwn(changes, "aiEnabled")
+                ? { aiEnabled: changes.aiEnabled }
+                : {}),
+            ...(Object.hasOwn(changes, "emailSent")
+                ? { emailSent: changes.emailSent }
+                : {}),
+            metadata
+        }));
     }
 
     async listContacts() {
@@ -213,5 +302,6 @@ module.exports = {
     SupabaseCrmRepository,
     createCrmRepository,
     normalizePlatform,
-    mapContact
+    mapContact,
+    mapConversationMessage
 };

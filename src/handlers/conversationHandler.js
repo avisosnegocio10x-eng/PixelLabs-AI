@@ -4,6 +4,7 @@ const { esNombreValido } = require("../services/nameValidationService");
 const systemPrompt = require("../prompts/systemPrompt");
 const {
     addMessage,
+    hydrateConversation,
     getConversation,
     getClient,
     correoYaEnviado,
@@ -52,6 +53,38 @@ async function recordCrmMessage({
     }));
 }
 
+async function hydrateFromPersistentCrm(plataforma, senderId) {
+    const state = await crm.getConversationState(plataforma, senderId);
+    return hydrateConversation(senderId, {
+        nombre: state.contact.nombre,
+        plataforma: state.contact.plataforma,
+        iaActiva: state.contact.iaActiva,
+        correoEnviado: state.contact.correoEnviado,
+        esperandoNombre: state.waitingForName,
+        messages: state.messages
+    });
+}
+
+async function recordInboundMessage({
+    plataforma,
+    senderId,
+    body,
+    externalMessageId
+}) {
+    const recorded = await crm.recordMessage({
+        platform: plataforma,
+        externalContactId: senderId,
+        externalConversationId: senderId,
+        externalMessageId,
+        role: "user",
+        body,
+        attributionCode: extractAttributionCode(body)
+    });
+    if (recorded?.duplicate) return false;
+    addMessage(senderId, "user", body);
+    return true;
+}
+
 async function sendAndRecord(plataforma, senderId, message) {
     await sendMessage(plataforma, senderId, message);
     addMessage(senderId, "assistant", message);
@@ -76,12 +109,24 @@ const processConversation = async ({
     plataforma,
     externalMessageId = null
 }) => {
+    await hydrateFromPersistentCrm(plataforma, senderId);
     setClientPlatform(senderId, plataforma);
+
+    const isNewMessage = await recordInboundMessage({
+        plataforma,
+        senderId,
+        body: userMessage,
+        externalMessageId
+    });
+    if (!isNewMessage) return;
 
     if (estaEsperandoNombre(senderId)) {
         const nombreValido = await esNombreValido(userMessage);
         if (!nombreValido) {
             setEsperandoNombre(senderId, true);
+            await crm.setConversationState(plataforma, senderId, {
+                waitingForName: true
+            });
             await sendAndRecord(
                 plataforma,
                 senderId,
@@ -91,17 +136,10 @@ const processConversation = async ({
         }
 
         guardarNombre(senderId, userMessage);
-        addMessage(senderId, "user", userMessage);
-        await recordCrmMessage({
-            plataforma,
-            senderId,
-            role: "user",
-            body: userMessage,
-            externalMessageId
+        await crm.setConversationState(plataforma, senderId, {
+            displayName: userMessage.trim(),
+            waitingForName: false
         });
-        await safeCrm(() => crm.updateContact(plataforma, senderId, {
-            displayName: userMessage.trim()
-        }));
         setEsperandoNombre(senderId, false);
 
         const conversation = getConversation(senderId);
@@ -113,15 +151,6 @@ const processConversation = async ({
         );
         return;
     }
-
-    addMessage(senderId, "user", userMessage);
-    await recordCrmMessage({
-        plataforma,
-        senderId,
-        role: "user",
-        body: userMessage,
-        externalMessageId
-    });
 
     if (!getClient(senderId).iaActiva) return;
 
@@ -135,6 +164,9 @@ const processConversation = async ({
 
     if (!tieneNombre(senderId)) {
         setEsperandoNombre(senderId, true);
+        await crm.setConversationState(plataforma, senderId, {
+            waitingForName: true
+        });
         return;
     }
 

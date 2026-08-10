@@ -2,7 +2,7 @@
 
 ## Sistema actual conservado
 
-El chatbot sigue entrando por `/webhook`, normaliza Messenger/Instagram/WhatsApp y genera respuestas con Gemini. En producción usa los repositorios CRM de Supabase; el JSON local permanece solo como fallback de desarrollo y compatibilidad.
+El chatbot sigue entrando por `/webhook`, normaliza Messenger/Instagram/WhatsApp y genera respuestas con Gemini. En producción usa los repositorios CRM de Supabase y reconstruye desde allí el contexto tras un reinicio o spin-down; el JSON local permanece solo como fallback de desarrollo y compatibilidad.
 
 ## Content Engine
 
@@ -52,3 +52,7 @@ El backend ejecuta trabajos idempotentes y recupera estados `QUEUED`/`RUNNING` a
 - n8n orquesta, pero no posee reglas comerciales ni secretos del frontend.
 - La publicación automática nace apagada.
 - Cada publicación debe tener idempotencia, confirmación externa y trazabilidad.
+- El despliegue gratuito ejecuta solo la API y las tareas ligeras; video pesado
+  queda aislado mediante una política de runtime y se procesa localmente.
+- La configuración pagada permanece en otro Blueprint para evitar activarla por
+  accidente.

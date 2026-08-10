@@ -1,5 +1,15 @@
 # Procesamiento de video
 
+## Perfiles de ejecución
+
+- `CONTENT_ENGINE_VIDEO_MODE=local`: habilita subida, `ffprobe`, `ffmpeg`, clips
+  y render. En producción exige `CONTENT_ENGINE_LOCAL_STORAGE_DURABLE=true`.
+- `CONTENT_ENGINE_VIDEO_MODE=disabled`: mantiene disponible el resto del sistema
+  y bloquea cualquier escritura de video. Es el modo de `render.free.yaml`.
+
+Si `NODE_ENV=production` no especifica un modo, el valor seguro es `disabled`.
+Un error de configuración nunca habilita video sobre almacenamiento efímero.
+
 ## Subida
 
 1. Crear sesión con nombre, MIME y tamaño total.
@@ -19,6 +29,12 @@ El backend escribe cada fragmento directamente en disco, fusiona rangos y evita 
 - El trabajo se ejecuta fuera del ciclo HTTP y admite `SIGSTOP`/`SIGCONT` para pausar y reanudar.
 
 Los estados se guardan en el manifiesto y, con Supabase configurado, en `source_videos`. Al reiniciar, los trabajos `QUEUED` o `PROCESSING` se recuperan; los pausados permanecen pausados.
+
+Supabase conserva estados y metadatos, pero el plan Free no puede ser la
+biblioteca de originales largos: admite 1 GB total y 50 MB por archivo. Durante
+la etapa gratuita, los originales, proxies y segmentos permanecen en la PC que
+ejecuta el modo local; solo los clips finales suficientemente pequeños pueden
+subirse al bucket privado.
 
 ## Análisis y clips
 
