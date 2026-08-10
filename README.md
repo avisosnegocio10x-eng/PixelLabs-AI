@@ -4,7 +4,7 @@ Backend de PixelLabs para atención por Messenger, Instagram y WhatsApp, cotizac
 
 ## Estado actual
 
-La rama `agent/pixellabs-content-engine` incluye una primera base ejecutable:
+La rama `agent/pixellabs-content-engine` incluye una base ejecutable conectada a Supabase:
 
 - Centro de Contenido protegido por token administrativo.
 - Configuración editable de publicaciones, historias y reels diarios.
@@ -21,8 +21,13 @@ La rama `agent/pixellabs-content-engine` incluye una primera base ejecutable:
 - Worker persistente para los 12 flujos n8n y recuperación después de reinicios.
 - Variantes diferentes para Facebook, Instagram y TikTok en modo borrador.
 - Docker y Blueprint de Render con `ffmpeg`, disco persistente y secretos fuera del repositorio.
+- Radar determinista para fuentes autorizadas, deduplicación y puntuación de riesgo/oportunidad.
+- Calendario editorial persistente con mezcla de categorías, días de descanso y protección contra choques de minuto.
+- Corrección automática limitada a texto de bajo riesgo; privacidad, legal, archivos y duplicados siempre pasan a una persona.
+- Métricas normalizadas y optimización semanal que prioriza ingresos, ventas, cotizaciones y mensajes.
+- Cinco migraciones aplicadas y verificadas en el proyecto Supabase conectado, sin avisos de seguridad.
 
-Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, la aprobación es manual y los flujos n8n están desactivados. Las conexiones OAuth, credenciales de Supabase y aprobación de las apps de Meta/TikTok son bloqueos externos deliberados.
+Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, la aprobación es manual y los flujos n8n están desactivados. Falta colocar la URL y la service-role de Supabase directamente en el entorno del backend desplegado; OAuth y la aprobación de las apps de Meta/TikTok siguen siendo bloqueos externos deliberados.
 
 ## Inicio local
 
@@ -42,6 +47,12 @@ Panel: `http://localhost:3000/admin`
 - `GET /admin/api/content-engine/settings`
 - `PATCH /admin/api/content-engine/settings`
 - `POST /admin/api/content-engine/emergency-stop`
+- `GET /admin/api/content-engine/trends`
+- `POST /admin/api/content-engine/trends/ingest`
+- `GET /admin/api/content-engine/calendar`
+- `POST /admin/api/content-engine/calendar/plan`
+- `GET /admin/api/content-engine/metrics/summary`
+- `POST /admin/api/content-engine/metrics`
 - `POST /admin/api/content-engine/videos/uploads`
 - `PUT /admin/api/content-engine/videos/uploads/:id/chunks`
 - `POST /admin/api/content-engine/videos/uploads/:id/complete`

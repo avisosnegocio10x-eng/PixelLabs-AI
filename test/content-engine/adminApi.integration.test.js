@@ -29,12 +29,65 @@ test("API real conserva aprobación manual desde catálogo hasta exportación", 
     });
 
     assert.equal((await fetch(`${base}/admin/api/content-engine/health`)).status, 401);
-    assert.equal((await request("/admin/api/content-engine/health")).status, 200);
+    const healthResponse = await request("/admin/api/content-engine/health");
+    assert.equal(healthResponse.status, 200);
+    const health = await healthResponse.json();
+    assert.equal(health.persistence, "local");
+    assert.equal(health.databaseReachable, false);
+    assert.equal(health.autoPublishDefault, false);
 
     const catalogResponse = await request("/admin/api/content-engine/catalog/products?q=LLV-024");
     assert.equal(catalogResponse.status, 200);
     const catalog = await catalogResponse.json();
     assert.equal(catalog.products[0].reference, "LLV-024");
+
+    const trendResponse = await request("/admin/api/content-engine/trends/ingest", {
+        method: "POST",
+        body: JSON.stringify({
+            observations: [{
+                name: "Llaveros personalizados para regreso a clases",
+                source: { collectionMethod: "manual" },
+                signals: {
+                    relevanceScore: 95,
+                    salesPotential: 95,
+                    messagesPotential: 95,
+                    localInterest: 90,
+                    productAvailability: 100,
+                    ownedMediaAvailability: 100,
+                    originalityPotential: 90,
+                    productionDifficulty: 10,
+                    expectedDuration: 10
+                }
+            }]
+        })
+    });
+    assert.equal(trendResponse.status, 201);
+    assert.equal((await trendResponse.json()).items[0].requiresHumanApproval, true);
+    const trends = await (await request("/admin/api/content-engine/trends")).json();
+    assert.equal(trends.items.length, 1);
+
+    const planResponse = await request("/admin/api/content-engine/calendar/plan", {
+        method: "POST",
+        body: JSON.stringify({
+            date: "2026-08-11",
+            platforms: ["facebook", "instagram", "tiktok"]
+        })
+    });
+    assert.equal(planResponse.status, 201);
+    const plan = await planResponse.json();
+    assert.equal(plan.slots.length, 9);
+    assert.equal(new Set(plan.slots.map(slot => slot.plannedFor)).size, 9);
+    assert.equal(plan.autoPublish, false);
+    const calendar = await (await request(
+        "/admin/api/content-engine/calendar?date=2026-08-11"
+    )).json();
+    assert.equal(calendar.slots.length, 9);
+
+    const metrics = await (await request(
+        "/admin/api/content-engine/metrics/summary"
+    )).json();
+    assert.equal(metrics.summary.records, 0);
+    assert.equal(metrics.summary.totals.sales, 0);
 
     const draftResponse = await request("/admin/api/content-engine/content", {
         method: "POST",

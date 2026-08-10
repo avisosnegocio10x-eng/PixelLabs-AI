@@ -137,6 +137,15 @@ nav { display: grid; gap: 6px; }
 .inline-message { min-height: 24px; margin-top: 16px; color: var(--muted); }
 .upload-form { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
 .upload-form input { flex: 1; }
+.inline-form {
+    display: grid;
+    grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(120px, 1fr)) auto;
+    align-items: end;
+    gap: 12px;
+    margin-top: 20px;
+}
+.inline-form label { display: grid; gap: 7px; color: #cbd1db; font-size: 13px; }
+.compact-metrics .metric-card { min-height: 104px; }
 .progress-track { height: 8px; margin-top: 18px; overflow: hidden; background: #080a0e; border-radius: 99px; }
 .progress-track span { display: block; width: 0; height: 100%; background: var(--accent); transition: width .2s ease; }
 .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
@@ -172,6 +181,7 @@ nav { display: grid; gap: 6px; }
 @media (max-width: 1050px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
     .settings-grid { grid-template-columns: repeat(2, 1fr); }
+    .inline-form { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
     .app-shell { display: block; }
@@ -182,5 +192,6 @@ nav { display: grid; gap: 6px; }
     .record-card { grid-template-columns: 1fr; }
     .record-actions { justify-content: flex-start; }
     .metric-grid, .settings-grid { grid-template-columns: 1fr; }
+    .inline-form { grid-template-columns: 1fr; }
     .main-content { padding: 28px 18px 60px; }
 }

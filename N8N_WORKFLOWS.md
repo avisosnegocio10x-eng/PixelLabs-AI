@@ -22,11 +22,12 @@ Los 12 JSON importables están en `n8n/workflows/` y todos tienen `active: false
 11. Optimización semanal.
 12. Recuperación de errores.
 
-Cada flujo encola un trabajo mediante API con `Idempotency-Key`. El worker persistente lo consume, guarda resultado y recupera trabajos interrumpidos al reiniciar. Los flujos de producción no deben activarse hasta conectar Supabase. El flujo 9 debe permanecer apagado hasta concluir OAuth y recibir autorización explícita; aun si se ejecuta por accidente, devuelve `AUTO_PUBLISH_DISABLED` y cero solicitudes externas.
+Cada flujo conserva el payload de entrada, encola un trabajo mediante API con `Idempotency-Key`, espera cinco segundos sin ocupar el proceso y consulta el estado del worker. El worker persistente consume la cola, guarda el resultado y recupera trabajos interrumpidos al reiniciar. Los flujos no deben activarse hasta configurar la instancia real y probar cada uno manualmente. El flujo 9 debe permanecer apagado hasta concluir OAuth y recibir autorización explícita; aun si se ejecuta por accidente, devuelve `AUTO_PUBLISH_DISABLED` y cero solicitudes externas.
 
 Validar exportaciones:
 
 ```bash
+npm run build:n8n
 npm run validate:n8n
 ```
 

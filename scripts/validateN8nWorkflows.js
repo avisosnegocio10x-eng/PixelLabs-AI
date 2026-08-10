@@ -15,8 +15,8 @@ for (const file of files) {
     if (names.has(workflow.name)) errors.push(`${file}: nombre duplicado.`);
     names.add(workflow.name);
     if (workflow.active !== false) errors.push(`${file}: active debe ser false.`);
-    if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 2) {
-        errors.push(`${file}: debe contener disparador y acción.`);
+    if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 4) {
+        errors.push(`${file}: debe encolar, esperar y consultar el resultado.`);
     }
     const serialized = JSON.stringify(workflow);
     if (serialized.includes('"credentials"')) errors.push(`${file}: no debe exportar credenciales.`);
@@ -34,6 +34,15 @@ for (const file of files) {
             }
         }
     }
+    const methods = workflow.nodes
+        .filter(node => node.type === "n8n-nodes-base.httpRequest")
+        .map(node => node.parameters?.method || "GET");
+    if (!methods.includes("POST") || !methods.includes("GET")) {
+        errors.push(`${file}: debe encolar por POST y consultar estado por GET.`);
+    }
+    if (!workflow.nodes.some(node => node.type === "n8n-nodes-base.wait")) {
+        errors.push(`${file}: falta espera no bloqueante antes de consultar el worker.`);
+    }
 }
 
 const publishFlow = JSON.parse(fs.readFileSync(
@@ -46,5 +55,5 @@ if (errors.length) {
     console.error(errors.join("\n"));
     process.exitCode = 1;
 } else {
-    console.log(`n8n validado: ${files.length} flujos inactivos, sin credenciales exportadas.`);
+    console.log(`n8n validado: ${files.length} flujos inactivos, con seguimiento y sin credenciales exportadas.`);
 }

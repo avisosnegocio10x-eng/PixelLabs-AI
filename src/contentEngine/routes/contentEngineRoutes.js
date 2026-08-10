@@ -15,6 +15,11 @@ const { createContentController } = require("../controllers/contentController");
 const { VideoLibraryService } = require("../video/videoLibraryService");
 const { createVideoLibraryController } = require("../controllers/videoLibraryController");
 const { createSocialController } = require("../controllers/socialController");
+const { createOperationsController } = require("../controllers/operationsController");
+const {
+    getSupabaseAdminClient,
+    hasSupabaseConfiguration
+} = require("../db/supabaseClient");
 
 function createContentEngineRoutes() {
     const router = express.Router();
@@ -31,22 +36,44 @@ function createContentEngineRoutes() {
     const videoLibrary = new VideoLibraryService(uploadService);
     const videoLibraryController = createVideoLibraryController(videoLibrary);
     const socialController = createSocialController();
+    const operationsController = createOperationsController();
     const rawChunk = express.raw({
         type: ["application/octet-stream", "video/*"],
         limit: "128mb"
     });
 
-    router.get("/health", (req, res) => {
-        res.json({
-            ok: true,
-            service: "pixellabs-content-engine",
-            autoPublishDefault: false
-        });
+    router.get("/health", async (req, res, next) => {
+        try {
+            const configured = hasSupabaseConfiguration();
+            let databaseReachable = false;
+            if (configured) {
+                const { error } = await getSupabaseAdminClient()
+                    .from("content_settings")
+                    .select("scope", { head: true, count: "exact" })
+                    .eq("scope", "global");
+                if (error) throw new Error(`Supabase no está listo: ${error.message}`);
+                databaseReachable = true;
+            }
+            res.json({
+                ok: true,
+                service: "pixellabs-content-engine",
+                persistence: configured ? "supabase" : "local",
+                databaseReachable,
+                autoPublishDefault: false
+            });
+        } catch (error) { next(error); }
     });
 
     router.get("/settings", settingsController.get);
     router.patch("/settings", settingsController.update);
     router.post("/emergency-stop", settingsController.emergencyStop);
+
+    router.get("/trends", operationsController.listTrends);
+    router.post("/trends/ingest", operationsController.ingestTrends);
+    router.get("/calendar", operationsController.listCalendar);
+    router.post("/calendar/plan", operationsController.createPlan);
+    router.get("/metrics/summary", operationsController.metricsSummary);
+    router.post("/metrics", operationsController.recordMetrics);
 
     router.post("/videos/uploads", videoUploadController.create);
     router.get("/videos/uploads/:uploadId", videoUploadController.status);

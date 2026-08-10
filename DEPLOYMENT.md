@@ -17,11 +17,13 @@ Render solo permite disco persistente en servicios pagados. El filesystem del pl
 
 ## Supabase
 
-1. Crear proyecto.
-2. Aplicar `001_content_engine.sql` y `002_crm_and_jobs.sql`.
+1. Usar el proyecto conectado y verificar que esté `ACTIVE_HEALTHY`.
+2. Aplicar en orden `001_content_engine.sql`, `002_crm_and_jobs.sql`, `003_security_and_fk_indexes.sql`, `004_editorial_calendar.sql` y `005_admin_rls_hardening.sql`.
 3. Confirmar el bucket privado `pixellabs-content`.
 4. Configurar `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo en Render.
 5. Ejecutar `npm run verify:supabase` dentro del entorno seguro.
+
+Las cinco migraciones ya fueron aplicadas al proyecto enlazado durante la validación del 10 de agosto de 2026. No deben repetirse manualmente en ese mismo proyecto; `supabase_migrations.schema_migrations` es la referencia antes de cualquier cambio futuro.
 
 ## Activación segura
 

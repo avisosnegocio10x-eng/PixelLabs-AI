@@ -46,6 +46,7 @@ class FileContentRepository {
         this.store = new JsonDocumentStore(filePath, {
             contentItems: [],
             reviews: [],
+            corrections: [],
             auditLogs: []
         });
     }
@@ -123,6 +124,22 @@ class FileContentRepository {
     async getReviews(contentItemId) {
         const document = await this.store.read();
         return document.reviews.filter(review => review.contentItemId === contentItemId);
+    }
+
+    async recordCorrection(input) {
+        const correction = {
+            id: crypto.randomUUID(),
+            ...input,
+            createdAt: new Date().toISOString(),
+            completedAt: ["APPLIED", "FAILED", "HUMAN_REQUIRED"].includes(input.status)
+                ? new Date().toISOString()
+                : null
+        };
+        await this.store.update(document => {
+            document.corrections ||= [];
+            document.corrections.push(correction);
+        });
+        return correction;
     }
 
     async audit(entry) {
@@ -232,6 +249,23 @@ class SupabaseContentRepository {
             .select("*").eq("content_item_id", contentItemId).order("reviewed_at");
         if (error) throw new Error(`No se pudieron leer revisiones: ${error.message}`);
         return data || [];
+    }
+
+    async recordCorrection(input) {
+        const { data, error } = await this.client.from("content_corrections").insert({
+            review_id: input.reviewId,
+            correction_type: input.correctionType,
+            attempt: input.attempt,
+            before_snapshot: input.beforeSnapshot || null,
+            after_snapshot: input.afterSnapshot || null,
+            status: input.status,
+            error_message: input.errorMessage || null,
+            completed_at: ["APPLIED", "FAILED", "HUMAN_REQUIRED"].includes(input.status)
+                ? new Date().toISOString()
+                : null
+        }).select("*").single();
+        if (error) throw new Error(`No se pudo guardar la corrección: ${error.message}`);
+        return data;
     }
 
     async audit(entry) {

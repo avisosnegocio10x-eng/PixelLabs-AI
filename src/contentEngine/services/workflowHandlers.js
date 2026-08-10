@@ -1,28 +1,47 @@
 const { createCatalogRepository } = require("../repositories/catalogRepository");
 const { ContentSettingsService } = require("./contentSettingsService");
+const { TrendRadarService } = require("./trendRadarService");
+const { EditorialPlannerService } = require("./editorialPlannerService");
+const { ContentLifecycleService } = require("./contentLifecycleService");
+const { ContentCorrectionService } = require("./contentCorrectionService");
+const { MetricsService } = require("./metricsService");
 
 function createWorkflowHandlers(options = {}) {
     const catalog = options.catalog || createCatalogRepository();
     const settings = options.settings || new ContentSettingsService();
+    const trends = options.trendRadar || new TrendRadarService(options);
+    const planner = options.planner || new EditorialPlannerService(options);
+    const lifecycle = options.lifecycle || new ContentLifecycleService(options);
+    const corrections = options.corrections || new ContentCorrectionService(options);
+    const metrics = options.metrics || new MetricsService(options);
     return {
-        "trend-research": async () => ({
-            status: "WAITING_FOR_SOURCES",
-            collected: 0,
-            note: "No se recopilan tendencias hasta configurar una fuente oficial o RSS autorizada."
-        }),
-        "editorial-plan": async payload => {
-            const products = await catalog.list({ promotableOnly: true, limit: 100 });
+        "trend-research": async payload => {
+            if (!Array.isArray(payload.observations) || payload.observations.length === 0) {
+                const candidates = await trends.listCandidates();
+                return {
+                    status: candidates.length ? "CANDIDATES_READY" : "WAITING_FOR_SOURCES",
+                    collected: 0,
+                    candidates,
+                    note: "Solo se aceptan APIs oficiales, RSS autorizados, datos propios o carga manual."
+                };
+            }
+            const items = await trends.ingest(payload.observations);
             return {
-                status: products.length ? "PLAN_READY" : "NO_PROMOTABLE_PRODUCTS",
-                requiresHumanApproval: true,
-                requestedAction: payload.action || null,
-                products: products.map(product => ({
-                    reference: product.reference,
-                    name: product.name,
-                    availabilityStatus: product.availabilityStatus,
-                    promotionBlockedUntil: product.promotionBlockedUntil
-                }))
+                status: "RESEARCH_COMPLETED",
+                collected: items.length,
+                candidates: items.filter(item => item.status === "CANDIDATE"),
+                requiresHumanApproval: true
             };
+        },
+        "editorial-plan": async payload => {
+            const date = payload.date || new Date().toISOString().slice(0, 10);
+            return planner.createPlan({
+                date,
+                platforms: payload.platforms,
+                productReference: payload.productReference,
+                campaignId: payload.campaignId,
+                targetAudience: payload.targetAudience
+            });
         },
         "content-generation": async payload => {
             const product = payload.productReference
@@ -58,25 +77,40 @@ function createWorkflowHandlers(options = {}) {
             clipId: payload.clipId || null,
             requiresHumanApproval: true
         }),
-        "multi-review": async payload => ({
-            status: payload.contentId ? "REVIEW_INPUT_REQUIRED" : "CONTENT_ID_REQUIRED",
-            requiredReviews: [
-                "visual", "spelling", "commercial", "brand",
-                "originality", "privacy", "technical", "business_potential"
-            ],
-            requiresHumanApproval: true
-        }),
-        "content-correction": async payload => ({
-            status: "CORRECTION_CLASSIFICATION_REQUIRED",
-            contentId: payload.contentId || null,
-            maxAutomaticAttempts: (await settings.getSettings()).maxCorrectionAttempts,
-            publishOnFailure: false
-        }),
-        "approval-routing": async payload => ({
-            status: "REQUIRES_HUMAN_APPROVAL",
-            contentId: payload.contentId || null,
-            autoPublish: false
-        }),
+        "multi-review": async payload => {
+            if (!payload.contentId) return { status: "CONTENT_ID_REQUIRED" };
+            if (!payload.scores) {
+                return {
+                    status: "REVIEW_INPUT_REQUIRED",
+                    requiredReviews: [
+                        "visual", "spelling", "commercial", "brand",
+                        "originality", "privacy", "technical", "businessPotential"
+                    ],
+                    requiresHumanApproval: true
+                };
+            }
+            const result = await lifecycle.review(payload.contentId, payload);
+            return { status: "REVIEW_COMPLETED", ...result, requiresHumanApproval: true };
+        },
+        "content-correction": async payload => payload.contentId
+            ? corrections.correct(payload.contentId)
+            : {
+                status: "CONTENT_ID_REQUIRED",
+                maxAutomaticAttempts: (await settings.getSettings()).maxCorrectionAttempts,
+                publishOnFailure: false
+            },
+        "approval-routing": async payload => {
+            if (!payload.contentId) return { status: "CONTENT_ID_REQUIRED", autoPublish: false };
+            const item = await lifecycle.requireItem(payload.contentId);
+            return {
+                status: item.status === "REQUIRES_HUMAN_APPROVAL"
+                    ? "REQUIRES_HUMAN_APPROVAL"
+                    : "NOT_READY_FOR_APPROVAL",
+                contentId: item.id,
+                contentStatus: item.status,
+                autoPublish: false
+            };
+        },
         "schedule-publish": async () => {
             const current = await settings.getSettings();
             if (!current.enabled) {
@@ -91,15 +125,18 @@ function createWorkflowHandlers(options = {}) {
                 externalRequestsSent: 0
             };
         },
-        "metrics-sync": async () => ({
-            status: "WAITING_FOR_CONNECTED_SOCIAL_ACCOUNTS",
-            metricsWritten: 0
-        }),
-        "weekly-optimization": async () => ({
-            status: "NO_VERIFIED_METRICS",
-            automaticSettingsChanged: false,
-            recommendations: []
-        }),
+        "metrics-sync": async payload => {
+            if (!Array.isArray(payload.items) || payload.items.length === 0) {
+                return {
+                    status: "WAITING_FOR_CONNECTED_SOCIAL_ACCOUNTS",
+                    metricsWritten: 0,
+                    summary: await metrics.summary()
+                };
+            }
+            const written = await metrics.recordBatch(payload.items);
+            return { status: "METRICS_SAVED", metricsWritten: written.length };
+        },
+        "weekly-optimization": async () => metrics.weeklyRecommendations(),
         "error-recovery": async payload => ({
             status: "SAFE_RETRY_REVIEW_REQUIRED",
             errorId: payload.errorId || null,

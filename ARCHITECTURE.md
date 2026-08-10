@@ -2,7 +2,7 @@
 
 ## Sistema actual conservado
 
-El chatbot sigue entrando por `/webhook`, normaliza Messenger/Instagram/WhatsApp, genera respuesta con Gemini y guarda el estado actual en `src/memory/conversations.json`. Esta persistencia es temporal y deberá migrarse al CRM de Supabase.
+El chatbot sigue entrando por `/webhook`, normaliza Messenger/Instagram/WhatsApp y genera respuestas con Gemini. En producción usa los repositorios CRM de Supabase; el JSON local permanece solo como fallback de desarrollo y compatibilidad.
 
 ## Content Engine
 
@@ -35,9 +35,11 @@ Los módulos están en `src/contentEngine/`:
 Chatbot / Panel / n8n
         -> API administrativa protegida
         -> catálogo + CRM + biblioteca
+        -> radar -> plan editorial -> calendario
         -> cola persistente
         -> video: proxy -> segmentos -> señales -> clips -> render
         -> 8 revisiones -> aprobación humana
+        -> métricas -> recomendaciones sin cambios automáticos
         -> paquete por plataforma (sin publicación externa)
 ```
 

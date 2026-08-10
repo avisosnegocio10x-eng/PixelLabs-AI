@@ -226,6 +226,129 @@ async function cargarAprobaciones() {
     )));
 }
 
+function localDate() {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: state.settings?.timezone || "America/El_Salvador"
+    }).format(new Date());
+}
+
+async function cargarTendencias() {
+    const data = await apiFetch("/admin/api/content-engine/trends");
+    const list = byId("trendList");
+    if (!data.items.length) return list.replaceChildren(emptyState("Todavía no hay tendencias que superen el puntaje mínimo."));
+    list.replaceChildren(...data.items.map(item => recordCard(
+        item.name,
+        [
+            item.summary || "Sin resumen adicional.",
+            `Puntaje: ${item.score.overallScore} · Recomendación: ${item.score.recommendation}`,
+            `Riesgo de copyright: ${item.score.copyrightRisk} · Marca: ${item.score.trademarkRisk}`,
+            statusBadge(item.status)
+        ]
+    )));
+}
+
+async function registrarTendencia(event) {
+    event.preventDefault();
+    try {
+        setMessage("trendMessage", "Evaluando…");
+        await apiFetch("/admin/api/content-engine/trends/ingest", {
+            method: "POST",
+            body: JSON.stringify({
+                observations: [{
+                    name: byId("trendName").value,
+                    source: {
+                        name: "Carga manual del propietario",
+                        sourceType: "manual",
+                        collectionMethod: "manual"
+                    },
+                    signals: {
+                        relevanceScore: Number(byId("trendRelevance").value),
+                        salesPotential: Number(byId("trendSales").value),
+                        messagesPotential: Number(byId("trendSales").value),
+                        localInterest: Number(byId("trendRelevance").value),
+                        copyrightRisk: Number(byId("trendRisk").value),
+                        trademarkRisk: Number(byId("trendRisk").value)
+                    }
+                }]
+            })
+        });
+        byId("trendName").value = "";
+        setMessage("trendMessage", "Tendencia evaluada. Sigue necesitando aprobación humana.", "success");
+        await cargarTendencias();
+    } catch (error) {
+        setMessage("trendMessage", error.message, "error");
+    }
+}
+
+async function cargarCalendario() {
+    const date = byId("calendarDate").value || localDate();
+    byId("calendarDate").value = date;
+    const data = await apiFetch(`/admin/api/content-engine/calendar?date=${encodeURIComponent(date)}`);
+    const list = byId("calendarList");
+    if (!data.slots.length) return list.replaceChildren(emptyState("No hay espacios editoriales para este día."));
+    list.replaceChildren(...data.slots.map(slot => recordCard(
+        `${new Date(slot.plannedFor).toLocaleTimeString("es-SV", { hour: "numeric", minute: "2-digit", timeZone: state.settings?.timezone })} · ${slot.platform}`,
+        [
+            slot.concept,
+            `${slot.category} · ${slot.recommendedFormats.join(", ")} · ${slot.metadata.productReference || "Sin producto"}`,
+            statusBadge(slot.status)
+        ]
+    )));
+}
+
+async function crearPlan() {
+    try {
+        setMessage("calendarMessage", "Creando distribución segura…");
+        const date = byId("calendarDate").value || localDate();
+        const result = await apiFetch("/admin/api/content-engine/calendar/plan", {
+            method: "POST",
+            body: JSON.stringify({ date, platforms: ["facebook", "instagram", "tiktok"] })
+        });
+        setMessage(
+            "calendarMessage",
+            result.status === "REST_DAY"
+                ? "Este día está configurado como descanso."
+                : `${result.slots.length} espacios preparados como propuestas.`,
+            "success"
+        );
+        await cargarCalendario();
+    } catch (error) {
+        setMessage("calendarMessage", error.message, "error");
+    }
+}
+
+function metricCard(label, value) {
+    const card = document.createElement("article");
+    card.className = "metric-card";
+    const name = document.createElement("span");
+    name.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    card.append(name, strong);
+    return card;
+}
+
+async function cargarMetricas() {
+    const data = await apiFetch("/admin/api/content-engine/metrics/summary");
+    const summary = data.summary;
+    byId("metricsGrid").replaceChildren(
+        metricCard("Ingresos atribuidos", `$${Number(summary.totals.revenue).toFixed(2)}`),
+        metricCard("Ventas", summary.totals.sales),
+        metricCard("Cotizaciones", summary.totals.quoteRequests),
+        metricCard("Mensajes", summary.totals.messages)
+    );
+    const list = byId("metricsList");
+    if (!summary.platforms.length) return list.replaceChildren(emptyState("Las métricas aparecerán cuando existan publicaciones confirmadas y cuentas autorizadas."));
+    list.replaceChildren(...summary.platforms.map(platform => recordCard(
+        platform.platform,
+        [
+            `Ingresos: $${Number(platform.revenue).toFixed(2)} · Ventas: ${platform.sales}`,
+            `Cotizaciones: ${platform.quoteRequests} · Mensajes: ${platform.messages}`,
+            `Visualizaciones: ${platform.views}`
+        ]
+    )));
+}
+
 function formatBytes(bytes) {
     if (!Number.isFinite(bytes)) return "—";
     const units = ["B", "KB", "MB", "GB", "TB"];
@@ -439,6 +562,7 @@ async function uploadVideo(file) {
 }
 
 async function initialize() {
+    if (!byId("calendarDate").value) byId("calendarDate").value = localDate();
     await Promise.all([
         cargarDashboard(),
         cargarClientes(),
@@ -446,7 +570,10 @@ async function initialize() {
         cargarCatalogo(),
         cargarAprobaciones(),
         cargarVideos(),
-        cargarClips()
+        cargarClips(),
+        cargarTendencias(),
+        cargarCalendario(),
+        cargarMetricas()
     ]);
     setAuthenticated(true);
 }
@@ -476,6 +603,13 @@ byId("refreshApprovals").addEventListener("click", cargarAprobaciones);
 byId("refreshClips").addEventListener("click", async () => {
     await Promise.all([cargarClips(), cargarVideos()]);
 });
+byId("refreshTrends").addEventListener("click", cargarTendencias);
+byId("trendForm").addEventListener("submit", registrarTendencia);
+byId("createPlan").addEventListener("click", crearPlan);
+byId("calendarDate").addEventListener("change", () => {
+    cargarCalendario().catch(error => setMessage("calendarMessage", error.message, "error"));
+});
+byId("refreshMetrics").addEventListener("click", cargarMetricas);
 byId("catalogSearch").addEventListener("keydown", event => {
     if (event.key === "Enter") cargarCatalogo().catch(error => window.alert(error.message));
 });

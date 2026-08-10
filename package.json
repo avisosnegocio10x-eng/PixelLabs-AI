@@ -9,6 +9,7 @@
     "test": "node --test --test-concurrency=1",
     "test:content": "node --test test/content-engine/*.test.js",
     "check": "node --check server.js && node --check src/public/admin.js && npm run validate:n8n && node --test --test-concurrency=1",
+    "build:n8n": "node scripts/buildN8nWorkflows.js",
     "validate:n8n": "node scripts/validateN8nWorkflows.js",
     "verify:supabase": "node scripts/verifySupabaseConnection.js"
   },
@@ -25,7 +26,7 @@
   },
   "homepage": "https://github.com/avisosnegocio10x-eng/PixelLabs-AI#readme",
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.2",
+    "@supabase/supabase-js": "2.112.2",
     "axios": "^1.19.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

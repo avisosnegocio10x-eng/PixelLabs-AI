@@ -41,3 +41,12 @@ Las tendencias nuevas requieren aprobación humana, aunque superen 95 puntos.
 ## Aprobación
 
 Un contenido nace `DRAFT`, recibe las ocho revisiones y pasa a `REQUIRES_HUMAN_APPROVAL`. Solo la ruta administrativa de aprobación puede convertirlo en `APPROVED`. La exportación social devuelve otra variante `DRAFT`; no equivale a publicar.
+
+## Operaciones editoriales
+
+- El radar acepta lotes manuales, datos propios, RSS o APIs autorizadas, normaliza la fuente y deduplica por SHA-256.
+- La puntuación combina relevancia, potencial de mensajes/ventas, disponibilidad y originalidad, restando riesgo legal, desinformación y dificultad.
+- El planificador usa las cantidades y horarios editables, rota `product`, `educational`, `trend`, `process` y `question`, respeta días de descanso y desplaza cinco minutos cualquier colisión.
+- Los espacios se guardan como `content_ideas.status = PROPOSED`; no crean una publicación ni cambian `autoPublish`.
+- Las métricas se optimizan en este orden: ingresos, ventas, cotizaciones, mensajes y finalmente visualizaciones.
+- La corrección automática solo normaliza espacios y puntuación de textos. Riesgos visuales, privacidad, originalidad, técnicos, copyright, marcas, producto agotado o datos sin confirmar se derivan a una persona.

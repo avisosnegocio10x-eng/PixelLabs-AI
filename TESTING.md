@@ -34,5 +34,11 @@ La suite ampliada incluye:
 - Generación de un MP4 real, análisis con `ffmpeg`, render vertical y portada.
 - Prueba HTTP completa de catálogo → revisión → aprobación → exportación.
 - Validación de 12 flujos n8n inactivos y sin credenciales.
+- Radar: fuente autorizada, deduplicación y rechazo por riesgo legal.
+- Plan editorial: nueve espacios configurables, categorías variadas, día de descanso y minutos únicos.
+- Corrección de texto de bajo riesgo y derivación humana de privacidad.
+- Métricas: ventas/mensajes por encima de visualizaciones aisladas.
+- HTTP real de radar, calendario y resumen de métricas.
+- Supabase real: cinco migraciones, RLS, relaciones, índices, bucket privado y prueba transaccional con rollback.
 
-Pendientes al conectar servicios: migración contra Supabase, archivos reales de 10 minutos y una hora, OAuth sandbox, errores/reintentos reales de Meta/TikTok y métricas reales.
+Estado actual: 51/51 pruebas automáticas. Pendientes al conectar servicios: archivos reales de 10 minutos y una hora, transcripción semántica, OAuth sandbox, errores/reintentos reales de Meta/TikTok y métricas obtenidas desde cuentas reales.

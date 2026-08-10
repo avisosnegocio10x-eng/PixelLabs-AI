@@ -17,4 +17,10 @@ La fuente queda guardada para auditoría interna. El contenido final debe usar f
 
 ## Estado de implementación
 
-El esquema, las fuentes iniciales, la cola idempotente y el flujo n8n diario están listos. Falta conectar proveedores concretos de tendencias y el modelo de puntuación cuando se definan las APIs/costos autorizados.
+- `TrendRadarService` acepta hasta 100 observaciones, valida fuentes y URLs, limita el texto guardado y conserva solo señales seguras en el snapshot.
+- La puntuación determinista está activa, aplica umbral configurable y rechaza automáticamente riesgos legales o de desinformación altos.
+- El repositorio local y Supabase deduplican tendencias y guardan el historial de puntuación.
+- El panel permite registrar una observación propia y consultar candidatas.
+- El flujo n8n diario puede recibir observaciones de una fuente autorizada y devuelve candidatas; permanece inactivo.
+
+Pendiente: escoger y autorizar proveedores externos concretos. Hasta entonces no se hace scraping ni se inventa una fuente.
