@@ -28,6 +28,8 @@ services:
     volumes:
       - pixellabs_n8n_data:/home/node/.n8n
       - ../workflows:/workflows:ro
+      - ./verifyConnection.js:/opt/pixellabs/verifyConnection.js:ro
+      - ./verifyImportedWorkflows.js:/opt/pixellabs/verifyImportedWorkflows.js:ro
 
 volumes:
   pixellabs_n8n_data:

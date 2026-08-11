@@ -89,3 +89,10 @@ n8n import:workflow --separate --input=/workflows
 La opción recomendada ahora es n8n Community autohospedado en el PC de
 PixelLabs: **$0/mes**. n8n Cloud Starter es de pago y no aporta una ventaja
 necesaria en esta etapa.
+
+La instalación guiada de Windows está en `n8n/local/CONFIGURAR-N8N.bat`. Además
+de importar sin activar, ejecuta una comprobación de solo lectura contra
+`/automation/readiness` desde el contenedor de n8n. Esa ruta valida el token
+dedicado, HTTPS, catálogo, CRM, radar, calendario, biblioteca, revisiones,
+clips, cola, auditoría, base de datos y Storage privado sin exponer la
+`service_role` ni generar trabajos de prueba persistentes.

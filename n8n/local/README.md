@@ -18,7 +18,23 @@ solicitudes HTTPS salientes al Content Engine de Render.
   almacén externo de secretos y los JSON no deben contener credenciales. No
   importes workflows de terceros en esta instancia.
 
-## Inicio seguro
+## Configuracion guiada recomendada
+
+1. Instala y abre Docker Desktop.
+2. Haz doble clic en `CONFIGURAR-N8N.bat`.
+3. Cuando lo pida, pega `N8N_WEBHOOK_SECRET` desde Render. El valor no se
+   muestra, no se imprime y se guarda solo en `config.env`, ignorado por Git.
+4. Espera el mensaje `N8N LOCAL LISTO`.
+
+El instalador genera `N8N_ENCRYPTION_KEY`, descarga la version fijada, evita
+importaciones duplicadas, confirma 12/12 workflows `Inactive` y prueba desde el
+contenedor la ruta autenticada n8n -> Render -> Supabase. La prueba es de solo
+lectura: no crea contenido, no encola videos y no llama a redes sociales.
+
+Después abre `http://127.0.0.1:5678` y crea el propietario local. No actives
+ningún workflow todavía.
+
+## Inicio manual alternativo
 
 1. Instala Docker Desktop.
 2. Copia `config.example.env` como `config.env`.
