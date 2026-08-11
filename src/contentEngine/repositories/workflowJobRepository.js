@@ -5,11 +5,17 @@ const {
     getSupabaseAdminClient,
     hasSupabaseConfiguration
 } = require("../db/supabaseClient");
+const {
+    resolveExecutionTarget
+} = require("../services/workflowExecutionPolicy");
 
 function mapJob(row) {
+    if (!row) return null;
+    const type = row.workflow_type || row.type;
     return {
         id: row.id,
-        type: row.workflow_type || row.type,
+        type,
+        executionTarget: resolveExecutionTarget(type),
         status: row.status,
         payload: row.payload || {},
         result: row.result || null,
@@ -18,6 +24,9 @@ function mapJob(row) {
         maxAttempts: row.max_attempts || row.maxAttempts || 3,
         errorCode: row.error_code || row.errorCode || null,
         errorMessage: row.error_message || row.errorMessage || null,
+        lockedBy: row.locked_by || row.lockedBy || null,
+        lockedAt: row.locked_at || row.lockedAt || null,
+        leaseExpiresAt: row.next_attempt_at || row.leaseExpiresAt || null,
         createdAt: row.created_at || row.createdAt,
         updatedAt: row.updated_at || row.updatedAt,
         completedAt: row.completed_at || row.completedAt || null
@@ -44,6 +53,9 @@ class FileWorkflowJobRepository {
             idempotencyKey: input.idempotencyKey || null,
             attempt: 0,
             maxAttempts: input.maxAttempts || 3,
+            lockedBy: null,
+            lockedAt: null,
+            leaseExpiresAt: null,
             createdAt: now,
             updatedAt: now
         });
@@ -113,6 +125,26 @@ class FileWorkflowJobRepository {
             throw error;
         }
     }
+
+    async claim(id, workerId, leaseExpiresAt) {
+        const job = await this.get(id);
+        if (!job) return null;
+        const now = Date.now();
+        const eligible = job.status === "QUEUED"
+            ? (!job.leaseExpiresAt || new Date(job.leaseExpiresAt).getTime() <= now)
+            : job.status === "RUNNING" && job.leaseExpiresAt &&
+                new Date(job.leaseExpiresAt).getTime() <= now;
+        if (!eligible) return null;
+        return this.update(id, {
+            status: "RUNNING",
+            lockedBy: workerId,
+            lockedAt: new Date().toISOString(),
+            leaseExpiresAt,
+            attempt: job.attempt + 1,
+            errorCode: null,
+            errorMessage: null
+        });
+    }
 }
 
 class SupabaseWorkflowJobRepository {
@@ -165,6 +197,9 @@ class SupabaseWorkflowJobRepository {
             maxAttempts: "max_attempts",
             errorCode: "error_code",
             errorMessage: "error_message",
+            lockedBy: "locked_by",
+            lockedAt: "locked_at",
+            leaseExpiresAt: "next_attempt_at",
             updatedAt: "updated_at",
             completedAt: "completed_at"
         };
@@ -184,6 +219,54 @@ class SupabaseWorkflowJobRepository {
             .select("*").in("status", statuses).order("created_at", { ascending: true }).limit(250);
         if (error) throw new Error(`No se pudo consultar la cola: ${error.message}`);
         return (data || []).map(mapJob);
+    }
+
+    async claim(id, workerId, leaseExpiresAt) {
+        const record = {
+            status: "RUNNING",
+            locked_by: workerId,
+            locked_at: new Date().toISOString(),
+            next_attempt_at: leaseExpiresAt,
+            error_code: null,
+            error_message: null,
+            updated_at: new Date().toISOString()
+        };
+
+        let response = await this.client.from("workflow_jobs")
+            .update(record)
+            .eq("id", id)
+            .eq("status", "QUEUED")
+            .or(`next_attempt_at.is.null,next_attempt_at.lte.${new Date().toISOString()}`)
+            .select("*")
+            .maybeSingle();
+
+        if (response.error) {
+            throw new Error(`No se pudo reclamar el trabajo: ${response.error.message}`);
+        }
+
+        if (!response.data) {
+            response = await this.client.from("workflow_jobs")
+                .update(record)
+                .eq("id", id)
+                .eq("status", "RUNNING")
+                .lte("next_attempt_at", new Date().toISOString())
+                .select("*")
+                .maybeSingle();
+            if (response.error) {
+                throw new Error(`No se pudo recuperar el trabajo: ${response.error.message}`);
+            }
+        }
+
+        if (!response.data) return null;
+        const attempt = Number(response.data.attempt || 0) + 1;
+        const { data, error } = await this.client.from("workflow_jobs")
+            .update({ attempt, updated_at: new Date().toISOString() })
+            .eq("id", id)
+            .eq("locked_by", workerId)
+            .select("*")
+            .maybeSingle();
+        if (error) throw new Error(`No se pudo confirmar el arrendamiento: ${error.message}`);
+        return mapJob(data);
     }
 }
 

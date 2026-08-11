@@ -370,11 +370,12 @@ async function cargarVideos() {
             "Video pesado está separado de este despliegue gratuito. El backend y los datos permanentes siguen activos.",
             ""
         );
-        return list.replaceChildren(emptyState(
-            "Procesa los videos largos en el entorno local o en el worker dedicado."
-        ));
     }
-    if (!data.videos.length) return list.replaceChildren(emptyState("La biblioteca todavía no contiene videos."));
+    if (!data.videos.length) return list.replaceChildren(emptyState(
+        disabled
+            ? "El agente local todavía no ha sincronizado videos."
+            : "La biblioteca todavía no contiene videos."
+    ));
     list.replaceChildren(...data.videos.map(video => recordCard(
         video.originalFilename,
         [
@@ -389,11 +390,7 @@ async function cargarVideos() {
 async function cargarClips() {
     const data = await apiFetch("/admin/api/content-engine/clips");
     const list = byId("clipList");
-    if (data.videoRuntime?.enabled === false) {
-        return list.replaceChildren(emptyState(
-            "Los clips aparecerán aquí cuando el procesador de video dedicado esté conectado."
-        ));
-    }
+    const localWorkerMode = data.videoRuntime?.enabled === false;
     if (!data.clips.length) return list.replaceChildren(emptyState("Aún no se detectaron clips."));
     list.replaceChildren(...data.clips.map(clip => {
         const style = document.createElement("select");
@@ -414,7 +411,10 @@ async function cargarClips() {
         const privacyLabel = document.createElement("label");
         privacyLabel.append(privacy, document.createTextNode("Privacidad revisada"));
         const actions = [];
-        if (!["APPROVED", "REJECTED", "ARCHIVED", "PUBLISHED"].includes(clip.status)) {
+        if (
+            !localWorkerMode &&
+            !["APPROVED", "REJECTED", "ARCHIVED", "PUBLISHED"].includes(clip.status)
+        ) {
             actions.push(
                 style,
                 actionButton("Renderizar", async () => {
@@ -456,9 +456,21 @@ async function cargarClips() {
                 }, "danger-button")
             );
         }
+        const latestVersion = clip.versions?.[0];
+        const preview = latestVersion?.media?.signedUrl
+            ? document.createElement("video")
+            : null;
+        if (preview) {
+            preview.controls = true;
+            preview.preload = "metadata";
+            preview.src = latestVersion.media.signedUrl;
+            preview.poster = latestVersion.cover?.signedUrl || "";
+            preview.className = "clip-preview";
+        }
         return recordCard(
             clip.topic || "Clip detectado",
             [
+                ...(preview ? [preview] : []),
                 `${clip.originalFilename} · ${(clip.durationMs / 1000).toFixed(1)} s · Puntaje de detección ${clip.score}`,
                 `Privacidad: ${clip.privacyStatus}`,
                 statusBadge(clip.status)

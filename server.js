@@ -8,13 +8,28 @@ const path = require("path");
 const webhookRoutes = require("./src/routes/webhook");
 const adminRoutes = require("./src/routes/adminRoutes");
 const legalRoutes = require("./src/routes/legalRoutes");
+const localWorkerRoutes = require("./src/routes/localWorkerRoutes");
+const automationRoutes = require("./src/routes/automationRoutes");
 const { errorHandler } = require("./src/middleware/errorHandler");
 const {
     validateRuntimeConfiguration
 } = require("./src/config/runtimeValidation");
 const {
-    getSupabaseAdminClient
-} = require("./src/contentEngine/db/supabaseClient");
+    checkSupabaseReadiness
+} = require("./src/contentEngine/services/readinessService");
+
+function trustedSupabaseOrigin(value = process.env.SUPABASE_URL) {
+    try {
+        const url = new URL(value || "");
+        if (
+            url.protocol === "https:" &&
+            /\.supabase\.(co|in|red)$/i.test(url.hostname)
+        ) return url.origin;
+    } catch (error) {
+        return null;
+    }
+    return null;
+}
 
 function createApp() {
     const runtimeConfiguration = validateRuntimeConfiguration();
@@ -24,11 +39,14 @@ function createApp() {
         app.set("trust proxy", 1);
     }
 
+    const storageOrigin = trustedSupabaseOrigin();
     app.disable("x-powered-by");
     app.use(helmet({
         contentSecurityPolicy: {
             directives: {
-                "style-src": ["'self'", "'unsafe-inline'"]
+                "style-src": ["'self'", "'unsafe-inline'"],
+                "img-src": ["'self'", "data:", ...(storageOrigin ? [storageOrigin] : [])],
+                "media-src": ["'self'", ...(storageOrigin ? [storageOrigin] : [])]
             }
         }
     }));
@@ -46,18 +64,16 @@ function createApp() {
 
     app.get("/healthz", async (req, res) => {
         try {
-            let databaseReachable = false;
-            if (runtimeConfiguration.supabaseConfigured) {
-                const { error } = await getSupabaseAdminClient()
-                    .from("content_settings")
-                    .select("scope", { head: true, count: "exact" })
-                    .eq("scope", "global");
-                if (error) throw error;
-                databaseReachable = true;
-            }
+            const readiness = runtimeConfiguration.supabaseConfigured
+                ? await checkSupabaseReadiness()
+                : {
+                    databaseReachable: false,
+                    catalogReachable: false,
+                    storageReachable: false
+                };
             res.json({
                 ok: true,
-                databaseReachable,
+                ...readiness,
                 videoMode: runtimeConfiguration.videoRuntime.mode,
                 autoPublish: false
             });
@@ -87,6 +103,10 @@ function createApp() {
 
     app.use("/admin", adminRoutes);
 
+    app.use("/worker", localWorkerRoutes);
+
+    app.use("/automation", automationRoutes);
+
     app.use("/", legalRoutes);
 
 // ============================
@@ -113,5 +133,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-    createApp
+    createApp,
+    trustedSupabaseOrigin
 };

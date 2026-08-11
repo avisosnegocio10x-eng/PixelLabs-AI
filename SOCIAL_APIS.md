@@ -1,10 +1,14 @@
 # APIs sociales
 
-Verificación realizada el 6 de agosto de 2026 contra documentación oficial. Ninguna publicación real está habilitada.
+Verificación realizada el 10 de agosto de 2026 contra documentación oficial.
+Ninguna publicación real ni solicitud externa está habilitada.
 
 ## TikTok
 
 La Content Posting API oficial permite videos y fotos. Publicación directa requiere una app registrada, Direct Post, aprobación de `video.publish` y autorización del usuario. Los clientes no auditados quedan limitados a visibilidad privada. La subida de borrador utiliza `video.upload` y exige que el propietario termine el flujo dentro de TikTok. El sistema implementa ambos clientes, pero no los expone para publicación mientras el modo sea `draft`.
+
+La vía `draft-upload` exige que la persona termine el flujo desde la notificación
+de TikTok.
 
 Fuente oficial: https://developers.tiktok.com/doc/content-posting-api-get-started
 
@@ -29,6 +33,13 @@ Fuentes oficiales:
 ## Regla de integración
 
 Si una cuenta o formato no supera la verificación de capacidades, el sistema generará archivo, portada y descripción como borrador para publicación manual. Jamás interpretará una solicitud aceptada como publicación confirmada sin consultar su estado.
+
+Todo cliente oficial exige simultáneamente `SOCIAL_PUBLISH_MODE=live`,
+`SOCIAL_EXTERNAL_REQUESTS_ENABLED=true`, habilitación explícita en la instancia y
+un identificador de aprobación humana. Si falta una sola condición, lanza
+`SOCIAL_OUTBOUND_DISABLED` antes de llegar a la red. La configuración validada de
+producción actual exige `draft` y `false`, por lo que estas llamadas son
+inalcanzables en Render.
 
 ## Estado técnico
 

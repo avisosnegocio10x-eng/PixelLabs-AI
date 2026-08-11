@@ -19,6 +19,9 @@ function validateRuntimeConfiguration(environment = process.env) {
     if (environment.SOCIAL_PUBLISH_MODE && environment.SOCIAL_PUBLISH_MODE !== "draft") {
         errors.push("SOCIAL_PUBLISH_MODE_MUST_BE_DRAFT");
     }
+    if (environment.SOCIAL_EXTERNAL_REQUESTS_ENABLED === "true") {
+        errors.push("SOCIAL_EXTERNAL_REQUESTS_MUST_REMAIN_DISABLED");
+    }
     if (
         environment.NODE_ENV === "production" &&
         videoRuntime.enabled &&
@@ -39,6 +42,7 @@ function validateRuntimeConfiguration(environment = process.env) {
         supabaseConfigured: hasSupabaseConfiguration(environment),
         autoPublish: false,
         socialPublishMode: environment.SOCIAL_PUBLISH_MODE || "draft",
+        socialExternalRequestsEnabled: false,
         videoRuntime
     };
 }

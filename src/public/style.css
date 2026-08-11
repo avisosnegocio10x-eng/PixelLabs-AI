@@ -169,6 +169,14 @@ nav { display: grid; gap: 6px; }
 .record-card code { color: var(--accent); }
 .record-actions, .compact-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .record-actions { justify-content: flex-end; max-width: 520px; }
+.clip-preview {
+    display: block;
+    width: min(220px, 100%);
+    max-height: 390px;
+    margin: 0.75rem 0;
+    border-radius: 14px;
+    background: #080b12;
+}
 .record-actions input, .record-actions select { min-width: 120px; }
 .record-actions label { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
 .record-actions label input[type="checkbox"] { min-width: auto; min-height: auto; }

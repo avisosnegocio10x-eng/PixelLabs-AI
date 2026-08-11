@@ -18,7 +18,9 @@ Verifica `ffmpeg -version`, espacio de disco, memoria y permisos del directorio.
 
 ## n8n crea 401
 
-Comprueba `PIXELLABS_API_URL` y `PIXELLABS_ADMIN_API_TOKEN`. No pegues el token en el JSON del flujo.
+Comprueba `PIXELLABS_API_URL` y `PIXELLABS_N8N_API_TOKEN`. El segundo debe ser
+el valor de `N8N_WEBHOOK_SECRET`, no `ADMIN_API_TOKEN`. No pegues ningún token en
+el JSON del flujo.
 
 ## Supabase no guarda
 

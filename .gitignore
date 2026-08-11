@@ -1,10 +1,7 @@
-.env
-.env.*
-!.env.example
 node_modules/
-coverage/
-tmp/
-uploads/
+.env
+local-worker/.env
+local-worker/inbox/
+local-worker/work/
 storage/
-*.log
-.DS_Store
+npm-debug.log*

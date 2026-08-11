@@ -13,13 +13,14 @@ const {
 const { createCatalogController } = require("../controllers/catalogController");
 const { createContentController } = require("../controllers/contentController");
 const { VideoLibraryService } = require("../video/videoLibraryService");
+const { CloudVideoLibraryService } = require("../video/cloudVideoLibraryService");
 const { createVideoLibraryController } = require("../controllers/videoLibraryController");
 const { createSocialController } = require("../controllers/socialController");
 const { createOperationsController } = require("../controllers/operationsController");
 const {
-    getSupabaseAdminClient,
     hasSupabaseConfiguration
 } = require("../db/supabaseClient");
+const { checkSupabaseReadiness } = require("../services/readinessService");
 const {
     resolveVideoRuntime,
     disabledVideoResponse
@@ -43,6 +44,12 @@ function createContentEngineRoutes() {
     const videoLibraryController = videoLibrary
         ? createVideoLibraryController(videoLibrary)
         : null;
+    const cloudVideoLibrary = !videoRuntime.enabled
+        ? new CloudVideoLibraryService()
+        : null;
+    const cloudVideoLibraryController = cloudVideoLibrary
+        ? createVideoLibraryController(cloudVideoLibrary)
+        : null;
     const socialController = createSocialController();
     const operationsController = createOperationsController();
     const rawChunk = express.raw({
@@ -53,20 +60,18 @@ function createContentEngineRoutes() {
     router.get("/health", async (req, res, next) => {
         try {
             const configured = hasSupabaseConfiguration();
-            let databaseReachable = false;
-            if (configured) {
-                const { error } = await getSupabaseAdminClient()
-                    .from("content_settings")
-                    .select("scope", { head: true, count: "exact" })
-                    .eq("scope", "global");
-                if (error) throw new Error(`Supabase no está listo: ${error.message}`);
-                databaseReachable = true;
-            }
+            const readiness = configured
+                ? await checkSupabaseReadiness()
+                : {
+                    databaseReachable: false,
+                    catalogReachable: false,
+                    storageReachable: false
+                };
             res.json({
                 ok: true,
                 service: "pixellabs-content-engine",
                 persistence: configured ? "supabase" : "local",
-                databaseReachable,
+                ...readiness,
                 autoPublishDefault: false,
                 videoRuntime
             });
@@ -112,11 +117,26 @@ function createContentEngineRoutes() {
         const unavailable = (req, res) => {
             res.status(503).json(disabledVideoResponse(videoRuntime));
         };
-        router.get("/videos", (req, res) => {
-            res.json({ ok: true, videos: [], videoRuntime });
+        router.get("/videos", async (req, res, next) => {
+            try {
+                res.json({
+                    ok: true,
+                    videos: await cloudVideoLibrary.listVideos(),
+                    videoRuntime
+                });
+            } catch (error) { next(error); }
         });
-        router.get("/clips", (req, res) => {
-            res.json({ ok: true, clips: [], videoRuntime });
+        router.get("/clips", async (req, res, next) => {
+            try {
+                res.json({
+                    ok: true,
+                    clips: await cloudVideoLibrary.listClips({
+                        status: req.query.status,
+                        platform: req.query.platform
+                    }),
+                    videoRuntime
+                });
+            } catch (error) { next(error); }
         });
         router.post("/videos/uploads", unavailable);
         router.get("/videos/uploads/:uploadId", unavailable);
@@ -125,7 +145,10 @@ function createContentEngineRoutes() {
         router.post("/videos/uploads/:uploadId/pause", unavailable);
         router.post("/videos/uploads/:uploadId/resume", unavailable);
         router.post("/videos/:uploadId/clips/:clipId/render", unavailable);
-        router.post("/videos/:uploadId/clips/:clipId/review", unavailable);
+        router.post(
+            "/videos/:uploadId/clips/:clipId/review",
+            cloudVideoLibraryController.review
+        );
     }
 
     router.post("/jobs/:workflow", workflowJobController.create);

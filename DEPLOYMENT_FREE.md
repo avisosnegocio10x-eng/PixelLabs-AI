@@ -20,21 +20,26 @@ En este perfil funcionan:
 - chatbot y recuperación de su contexto desde CRM;
 - catálogo, CRM, tendencias, calendario, contenido, revisiones y métricas;
 - colas y estados persistidos en PostgreSQL de Supabase;
+- biblioteca de videos y clips sincronizados desde la PC, con enlaces privados
+  firmados de corta duración;
 - aprobación humana y exportaciones sociales en modo borrador;
+- coordinación de un agente local de video mediante un token exclusivo;
 - pruebas HTTP del servicio desplegado.
 
 `REQUIRE_SUPABASE=true` evita que producción caiga silenciosamente a archivos
 JSON efímeros. Si faltan `SUPABASE_URL` o `SUPABASE_SERVICE_ROLE_KEY`, el proceso
 se niega a arrancar.
 
-Render consulta `/healthz`. El endpoint devuelve 503 si Supabase está configurado
-pero no responde, sin revelar claves ni mensajes internos del proveedor.
+Render consulta `/healthz`. El endpoint comprueba base de datos, producto
+`LLV-024` y bucket privado `pixellabs-content`; devuelve 503 si una dependencia
+no está lista, sin revelar claves ni mensajes internos del proveedor.
 
 ## Qué no se ejecuta en el perfil gratuito
 
 `CONTENT_ENGINE_VIDEO_MODE=disabled` bloquea con HTTP 503 la subida, validación,
-segmentación y render de video. Las consultas de biblioteca siguen respondiendo
-para que el resto del panel funcione. La decisión es deliberada:
+segmentación y render dentro de Render. Las consultas y revisiones de la
+biblioteca sincronizada siguen disponibles; los trabajos pesados se reservan al
+agente local. La decisión es deliberada:
 
 - Render Free tiene 512 MB de RAM, 0.1 CPU y se duerme tras 15 minutos sin
   solicitudes entrantes;
@@ -58,14 +63,16 @@ El tamaño depende del bitrate. Como referencia, a 8 Mb/s una hora ocupa unos
 3.6 GB y diez horas unos 36 GB antes de crear proxy, segmentos y renders. Durante
 el procesamiento puede necesitarse entre 1.3 y 2 veces el tamaño del original.
 
-### Opción recomendada ahora: procesador local
+### Opción implementada ahora: agente local
 
 - Costo cloud adicional: **$0/mes**.
-- Ejecutar el backend local con `CONTENT_ENGINE_VIDEO_MODE=local` en la PC de
-  PixelLabs.
+- Ejecutar `npm run worker:local` en la PC de PixelLabs; el backend continúa en
+  Render Free.
 - Conservar los originales y temporales en esa PC.
 - Sincronizar metadatos en Supabase y subir únicamente clips finales comprimidos
   que respeten 50 MB por archivo y el total de 1 GB.
+- El agente recibe URLs firmadas de dos horas para subir al bucket privado por
+  TUS; nunca recibe la clave `service_role`.
 - Limitación: la PC debe permanecer encendida durante el procesamiento; la cola
   de video no es un worker cloud siempre disponible.
 

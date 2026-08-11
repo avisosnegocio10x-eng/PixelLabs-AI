@@ -19,6 +19,14 @@
 - Producción exige Supabase y no puede caer silenciosamente a JSON efímero.
 - Render Free bloquea video pesado; una configuración inválida no habilita
   escritura en filesystem temporal.
+- Panel, n8n y agente local usan tres tokens independientes y rutas de mínimo
+  privilegio.
+- El agente sube directamente al bucket privado con tickets TUS firmados de dos
+  horas; no recibe la clave de servicio de Supabase.
+- La fuente local rechaza traversal y enlaces simbólicos; los resultados omiten
+  rutas absolutas de la PC.
+- Los clientes de Meta y TikTok fallan antes de hacer HTTP salvo que coincidan
+  cuatro autorizaciones explícitas. Auto-publicación sigue siempre apagada.
 
 ## Acción obligatoria antes de producción
 

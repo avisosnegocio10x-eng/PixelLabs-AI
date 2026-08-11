@@ -20,8 +20,14 @@ for (const file of files) {
     }
     const serialized = JSON.stringify(workflow);
     if (serialized.includes('"credentials"')) errors.push(`${file}: no debe exportar credenciales.`);
-    if (serialized.includes("PIXELLABS_ADMIN_API_TOKEN") && !serialized.includes("$env.PIXELLABS_ADMIN_API_TOKEN")) {
-        errors.push(`${file}: el token debe leerse desde variables de entorno.`);
+    if (serialized.includes("PIXELLABS_ADMIN_API_TOKEN")) {
+        errors.push(`${file}: n8n no debe recibir el token administrativo.`);
+    }
+    if (!serialized.includes("$env.PIXELLABS_N8N_API_TOKEN")) {
+        errors.push(`${file}: debe usar el token limitado de automatización.`);
+    }
+    if (!serialized.includes("/automation/jobs/")) {
+        errors.push(`${file}: debe usar la API limitada de automatización.`);
     }
     for (const node of workflow.nodes || []) {
         if (!node.id) errors.push(`${file}: un nodo no tiene id.`);
@@ -31,6 +37,9 @@ for (const file of files) {
             const url = String(node.parameters?.url || "");
             if (!url.includes("$env.PIXELLABS_API_URL")) {
                 errors.push(`${file}: HTTP Request no usa PIXELLABS_API_URL.`);
+            }
+            if (url.includes("/admin/")) {
+                errors.push(`${file}: HTTP Request no debe acceder al panel administrativo.`);
             }
         }
     }

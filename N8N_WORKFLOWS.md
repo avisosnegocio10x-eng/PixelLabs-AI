@@ -5,7 +5,8 @@ Los 12 JSON importables están en `n8n/workflows/` y todos tienen `active: false
 ## Variables de n8n
 
 - `PIXELLABS_API_URL`: URL pública del backend, sin barra final.
-- `PIXELLABS_ADMIN_API_TOKEN`: mismo secreto seguro configurado en el backend.
+- `PIXELLABS_N8N_API_TOKEN`: valor de `N8N_WEBHOOK_SECRET`; no es ni puede ser el
+  token administrativo.
 
 ## Flujos
 
@@ -22,7 +23,17 @@ Los 12 JSON importables están en `n8n/workflows/` y todos tienen `active: false
 11. Optimización semanal.
 12. Recuperación de errores.
 
-Cada flujo conserva el payload de entrada, encola un trabajo mediante API con `Idempotency-Key`, espera cinco segundos sin ocupar el proceso y consulta el estado del worker. El worker persistente consume la cola, guarda el resultado y recupera trabajos interrumpidos al reiniciar. Los flujos no deben activarse hasta configurar la instancia real y probar cada uno manualmente. El flujo 9 debe permanecer apagado hasta concluir OAuth y recibir autorización explícita; aun si se ejecuta por accidente, devuelve `AUTO_PUBLISH_DISABLED` y cero solicitudes externas.
+Cada flujo conserva el payload de entrada, encola mediante la API limitada
+`POST /automation/jobs/:workflow` con `Idempotency-Key`, espera cinco segundos
+sin ocupar el proceso y consulta `GET /automation/jobs/:id`. Ese token no tiene
+acceso al panel, catálogo, revisiones, secretos ni configuración.
+
+El runner persistente consume sólo los trabajos ligeros; procesamiento y edición
+de video quedan reservados al agente local. Los flujos no deben activarse hasta
+configurar la instancia real y probar cada uno manualmente. El flujo 9 debe
+permanecer apagado hasta concluir OAuth y recibir autorización explícita; aun si
+se ejecuta por accidente, la publicación automática sigue deshabilitada y las
+llamadas sociales externas están bloqueadas.
 
 Validar exportaciones:
 
@@ -30,5 +41,8 @@ Validar exportaciones:
 npm run build:n8n
 npm run validate:n8n
 ```
+
+La validación también falla si un JSON contiene el token administrativo o una
+URL `/admin/`.
 
 Importación más sencilla: en n8n abre **Workflows → Import from File** e importa los 12 JSON de `n8n/workflows/`. Verifica que todos aparezcan como **Inactive**. Para una instancia autohospedada también se admite el comando oficial `n8n import:workflow --separate --input=/ruta/n8n/workflows`; vuelve a validar el estado desde la interfaz antes de configurar credenciales.

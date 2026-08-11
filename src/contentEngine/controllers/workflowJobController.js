@@ -13,12 +13,14 @@ function createWorkflowJobController(
                     req.body || {},
                     req.get("idempotency-key") || ""
                 );
-                setImmediate(() => runner.run(job.id).catch(error => {
-                    console.error("Workflow execution failed", {
-                        jobId: job.id,
-                        code: error.code || "WORKFLOW_EXECUTION_FAILED"
-                    });
-                }));
+                if (job.executionTarget === "backend") {
+                    setImmediate(() => runner.run(job.id).catch(error => {
+                        console.error("Workflow execution failed", {
+                            jobId: job.id,
+                            code: error.code || "WORKFLOW_EXECUTION_FAILED"
+                        });
+                    }));
+                }
                 res.status(202).json({ ok: true, job });
             } catch (error) {
                 next(error);

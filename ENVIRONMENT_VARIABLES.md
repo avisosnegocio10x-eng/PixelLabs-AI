@@ -22,14 +22,20 @@ Usa `.env.example` como referencia.
   por defecto si no se define.
 - `CONTENT_ENGINE_LOCAL_STORAGE_DURABLE`: debe ser `true` para habilitar video
   local en producción. No lo uses en Render Free.
+- `LOCAL_WORKER_API_TOKEN`: secreto exclusivo para el agente de la PC; no
+  reutilizar `ADMIN_API_TOKEN` ni `N8N_WEBHOOK_SECRET`.
+- `LOCAL_WORKER_MAX_ARTIFACT_BYTES`: límite por artefacto sincronizado; el
+  Blueprint gratuito usa 50331648 bytes (48 MiB).
 
 ## Sociales y n8n
 
 `META_APP_ID`, `META_APP_SECRET`, `META_GRAPH_API_VERSION`, IDs de página/cuenta, credenciales OAuth de TikTok, `N8N_WEBHOOK_SECRET` y `N8N_BASE_URL`.
 
 - `SOCIAL_PUBLISH_MODE`: debe permanecer `draft`.
+- `SOCIAL_EXTERNAL_REQUESTS_ENABLED`: debe permanecer `false`.
 - `SOCIAL_TOKEN_ENCRYPTION_KEY`: secreto base64 de 32 bytes; Render lo genera.
 - `PIXELLABS_API_URL`: URL pública del backend para n8n.
-- `PIXELLABS_ADMIN_API_TOKEN`: mismo secreto administrativo, configurado dentro de n8n, nunca exportado en JSON.
+- `PIXELLABS_N8N_API_TOKEN`: copia de `N8N_WEBHOOK_SECRET`, configurada dentro de
+  n8n y nunca exportada en JSON. No usar el token administrativo.
 
 `CONTENT_ENGINE_AUTO_PUBLISH` no sustituye la configuración de base de datos ni las barreras; la publicación continúa apagada hasta aprobación explícita.

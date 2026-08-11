@@ -28,10 +28,18 @@ La rama `agent/pixellabs-content-engine` incluye una base ejecutable conectada a
 - Cinco migraciones aplicadas y verificadas en el proyecto Supabase conectado, sin avisos de seguridad.
 - Blueprint gratuito separado para API/panel/chatbot/CRM, sin disco ni recursos
   pagados, y bloqueo seguro del procesamiento de video pesado.
+- Agente de video para la PC con cola exclusiva, FFmpeg local y subidas firmadas
+  al bucket privado, sin entregar credenciales privilegiadas.
+- Biblioteca de videos y clips sincronizada en Render Free, con revisión humana
+  y URLs privadas temporales.
 - Contexto del chatbot reconstruido desde el CRM de Supabase después de
   reinicios; JSON únicamente como fallback local.
 
-Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, la aprobación es manual y los flujos n8n están desactivados. Falta colocar la URL y la service-role de Supabase directamente en el entorno del backend desplegado; OAuth y la aprobación de las apps de Meta/TikTok siguen siendo bloqueos externos deliberados.
+Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, las
+llamadas sociales externas están bloqueadas, la aprobación es manual y los
+flujos n8n están desactivados. Render ya tiene Supabase configurado; OAuth y la
+aprobación de las apps de Meta/TikTok siguen siendo bloqueos externos
+deliberados.
 
 ## Inicio local
 
@@ -45,7 +53,9 @@ npm start
 Configura al menos `ADMIN_API_TOKEN`. En producción también son obligatorios `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
 
 Para probar sin cargos usa `render.free.yaml`. No procesa videos largos en la
-nube; consulta `DEPLOYMENT_FREE.md` antes de activar infraestructura pagada.
+nube; ejecuta `npm run worker:local` en la PC siguiendo
+`local-worker/README.md`. Consulta `DEPLOYMENT_FREE.md` antes de activar
+infraestructura pagada.
 
 Panel: `http://localhost:3000/admin`
 
@@ -79,6 +89,9 @@ Panel: `http://localhost:3000/admin`
 - `POST /admin/api/content-engine/content/:id/export/:platform`
 
 Todas requieren `Authorization: Bearer <ADMIN_API_TOKEN>`.
+
+Las rutas `/automation/*` usan sólo `N8N_WEBHOOK_SECRET`; las rutas `/worker/*`
+usan sólo `LOCAL_WORKER_API_TOKEN`. Ninguno sustituye al token administrativo.
 
 ## Validación
 

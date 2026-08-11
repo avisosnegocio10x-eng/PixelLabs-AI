@@ -11,6 +11,8 @@ test("el Blueprint gratuito no puede crear disco ni cómputo pagado", () => {
     assert.match(free, /CONTENT_ENGINE_VIDEO_MODE[\s\S]*?value:\s*disabled/);
     assert.match(free, /REQUIRE_SUPABASE[\s\S]*?value:\s*"true"/);
     assert.match(free, /CONTENT_ENGINE_AUTO_PUBLISH[\s\S]*?value:\s*"false"/);
+    assert.match(free, /LOCAL_WORKER_API_TOKEN[\s\S]*?generateValue:\s*true/);
+    assert.match(free, /SOCIAL_EXTERNAL_REQUESTS_ENABLED[\s\S]*?value:\s*"false"/);
     assert.match(free, /autoDeployTrigger:\s*off/);
     assert.match(free, /healthCheckPath:\s*\/healthz/);
     assert.match(free, /dockerfilePath:\s*\.\/Dockerfile\.free/);
@@ -26,6 +28,8 @@ test("el Blueprint de producción conserva Starter y su disco separado", () => {
     assert.match(production, /plan:\s*starter/);
     assert.match(production, /CONTENT_ENGINE_VIDEO_MODE[\s\S]*?value:\s*local/);
     assert.match(production, /CONTENT_ENGINE_LOCAL_STORAGE_DURABLE[\s\S]*?value:\s*"true"/);
+    assert.match(production, /LOCAL_WORKER_API_TOKEN[\s\S]*?generateValue:\s*true/);
+    assert.match(production, /SOCIAL_EXTERNAL_REQUESTS_ENABLED[\s\S]*?value:\s*"false"/);
     assert.match(production, /disk:[\s\S]*?sizeGB:\s*10/);
     assert.match(production, /autoDeployTrigger:\s*off/);
     assert.match(production, /healthCheckPath:\s*\/healthz/);

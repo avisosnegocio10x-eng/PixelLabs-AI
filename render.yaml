@@ -21,6 +21,8 @@ services:
         value: "false"
       - key: SOCIAL_PUBLISH_MODE
         value: draft
+      - key: SOCIAL_EXTERNAL_REQUESTS_ENABLED
+        value: "false"
       - key: CONTENT_ENGINE_UPLOAD_DIR
         value: /app/storage/uploads
       - key: CONTENT_ENGINE_WORK_DIR
@@ -35,6 +37,10 @@ services:
         generateValue: true
       - key: N8N_WEBHOOK_SECRET
         generateValue: true
+      - key: LOCAL_WORKER_API_TOKEN
+        generateValue: true
+      - key: LOCAL_WORKER_MAX_ARTIFACT_BYTES
+        value: "50331648"
       - key: SOCIAL_TOKEN_ENCRYPTION_KEY
         generateValue: true
       - key: SUPABASE_URL

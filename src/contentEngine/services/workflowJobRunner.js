@@ -16,6 +16,7 @@ class WorkflowJobRunner {
         try {
             job = await this.service.get(jobId);
             if (["COMPLETED", "FAILED", "CANCELLED"].includes(job.status)) return job;
+            if (job.executionTarget !== "backend") return job;
             const attempt = job.attempt + 1;
             await this.service.update(job.id, { status: "RUNNING", attempt });
             const handler = this.handlers[job.type];
@@ -45,7 +46,8 @@ class WorkflowJobRunner {
 
     async recover() {
         const jobs = await this.service.listByStatuses(["QUEUED", "RUNNING"]);
-        for (const job of jobs) {
+        const backendJobs = jobs.filter(job => job.executionTarget === "backend");
+        for (const job of backendJobs) {
             setImmediate(() => this.run(job.id).catch(error => {
                 console.error("Workflow recovery failed", {
                     jobId: job.id,
@@ -53,7 +55,7 @@ class WorkflowJobRunner {
                 });
             }));
         }
-        return jobs.length;
+        return backendJobs.length;
     }
 }
 

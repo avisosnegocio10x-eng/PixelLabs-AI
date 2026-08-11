@@ -6,6 +6,16 @@ const {
 const {
     validateRuntimeConfiguration
 } = require("../../src/config/runtimeValidation");
+const { trustedSupabaseOrigin } = require("../../server");
+
+test("CSP sólo acepta el origen oficial configurado de Supabase", () => {
+    assert.equal(
+        trustedSupabaseOrigin("https://project.supabase.co/path"),
+        "https://project.supabase.co"
+    );
+    assert.equal(trustedSupabaseOrigin("https://supabase.co.attacker.example"), null);
+    assert.equal(trustedSupabaseOrigin("http://project.supabase.co"), null);
+});
 
 test("producción desactiva video si no existe una decisión explícita", () => {
     const runtime = resolveVideoRuntime({ NODE_ENV: "production" });
@@ -41,11 +51,13 @@ test("el perfil persistente rechaza Supabase ausente y publicación real", () =>
         REQUIRE_SUPABASE: "true",
         CONTENT_ENGINE_VIDEO_MODE: "disabled",
         CONTENT_ENGINE_AUTO_PUBLISH: "true",
-        SOCIAL_PUBLISH_MODE: "live"
+        SOCIAL_PUBLISH_MODE: "live",
+        SOCIAL_EXTERNAL_REQUESTS_ENABLED: "true"
     }), error => (
         error.errors.includes("SUPABASE_REQUIRED_BUT_NOT_CONFIGURED") &&
         error.errors.includes("AUTO_PUBLISH_MUST_REMAIN_DISABLED") &&
-        error.errors.includes("SOCIAL_PUBLISH_MODE_MUST_BE_DRAFT")
+        error.errors.includes("SOCIAL_PUBLISH_MODE_MUST_BE_DRAFT") &&
+        error.errors.includes("SOCIAL_EXTERNAL_REQUESTS_MUST_REMAIN_DISABLED")
     ));
 });
 
@@ -63,4 +75,5 @@ test("el perfil gratuito acepta Supabase y mantiene video pesado apagado", () =>
     assert.equal(valid.supabaseConfigured, true);
     assert.equal(valid.videoRuntime.enabled, false);
     assert.equal(valid.autoPublish, false);
+    assert.equal(valid.socialExternalRequestsEnabled, false);
 });

@@ -21,6 +21,15 @@ for (const file of fs.readdirSync(directory).filter(name => name.endsWith(".json
     if (!trigger || !enqueue) throw new Error(`${file}: falta disparador o nodo para encolar.`);
 
     enqueue.parameters.body = "={{ JSON.stringify({ ...$json, source: 'n8n', requestedAt: $now.toISO() }) }}";
+    enqueue.parameters.url = String(enqueue.parameters.url)
+        .replace("/admin/api/content-engine/jobs/", "/automation/jobs/");
+    enqueue.parameters.sendHeaders = true;
+    enqueue.parameters.headerParameters = {
+        parameters: [{
+            name: "Authorization",
+            value: "={{ 'Bearer ' + $env.PIXELLABS_N8N_API_TOKEN }}"
+        }]
+    };
     enqueue.parameters.options = {
         timeout: 30000,
         response: { response: { neverError: false, responseFormat: "json" } }
@@ -39,12 +48,12 @@ for (const file of fs.readdirSync(directory).filter(name => name.endsWith(".json
     const status = {
         parameters: {
             method: "GET",
-            url: "={{ $env.PIXELLABS_API_URL + '/admin/api/content-engine/jobs/status/' + $('" + enqueue.name + "').item.json.job.id }}",
+            url: "={{ $env.PIXELLABS_API_URL + '/automation/jobs/status/' + $('" + enqueue.name + "').item.json.job.id }}",
             sendHeaders: true,
             headerParameters: {
                 parameters: [{
                     name: "Authorization",
-                    value: "={{ 'Bearer ' + $env.PIXELLABS_ADMIN_API_TOKEN }}"
+                    value: "={{ 'Bearer ' + $env.PIXELLABS_N8N_API_TOKEN }}"
                 }]
             },
             options: {

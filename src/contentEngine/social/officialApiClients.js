@@ -9,12 +9,43 @@ function requireGraphVersion(value = process.env.META_GRAPH_API_VERSION) {
     return value;
 }
 
+function createSocialOutboundPolicy(options = {}, env = process.env) {
+    return Object.freeze({
+        mode: options.mode || env.SOCIAL_PUBLISH_MODE || "draft",
+        externalRequestsEnabled: options.externalRequestsEnabled === true || (
+            options.externalRequestsEnabled === undefined &&
+            env.SOCIAL_EXTERNAL_REQUESTS_ENABLED === "true"
+        ),
+        allowOutbound: options.allowOutbound === true,
+        approvalId: typeof options.approvalId === "string" ? options.approvalId.trim() : ""
+    });
+}
+
+function assertSocialOutboundAllowed(policy, operation) {
+    const allowed = policy.mode === "live" &&
+        policy.externalRequestsEnabled === true &&
+        policy.allowOutbound === true &&
+        Boolean(policy.approvalId);
+    if (!allowed) {
+        throw Object.assign(
+            new Error("Las llamadas a APIs sociales están bloqueadas hasta recibir aprobación humana explícita."),
+            {
+                statusCode: 409,
+                code: "SOCIAL_OUTBOUND_DISABLED",
+                operation,
+                autoPublish: false
+            }
+        );
+    }
+}
+
 class InstagramPublishingClient {
     constructor(options = {}) {
         this.http = options.http || axios;
         this.version = requireGraphVersion(options.version);
         this.accountId = options.accountId || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
         this.accessToken = options.accessToken;
+        this.outboundPolicy = createSocialOutboundPolicy(options.outboundPolicy);
     }
 
     headers() {
@@ -22,6 +53,7 @@ class InstagramPublishingClient {
     }
 
     async createContainer(input) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "instagram.create-container");
         const body = input.format === "reel"
             ? { media_type: "REELS", video_url: input.mediaUrl, caption: input.caption }
             : input.format === "story"
@@ -36,6 +68,7 @@ class InstagramPublishingClient {
     }
 
     async publishContainer(creationId) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "instagram.publish-container");
         const { data } = await this.http.post(
             `https://graph.facebook.com/${this.version}/${this.accountId}/media_publish`,
             { creation_id: creationId },
@@ -45,6 +78,7 @@ class InstagramPublishingClient {
     }
 
     async getContainerStatus(creationId) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "instagram.get-container-status");
         const { data } = await this.http.get(
             `https://graph.facebook.com/${this.version}/${creationId}`,
             { params: { fields: "status_code,status" }, headers: this.headers() }
@@ -59,6 +93,7 @@ class FacebookPagePublishingClient {
         this.version = requireGraphVersion(options.version);
         this.pageId = options.pageId || process.env.FACEBOOK_PAGE_ID;
         this.accessToken = options.accessToken;
+        this.outboundPolicy = createSocialOutboundPolicy(options.outboundPolicy);
     }
 
     headers() {
@@ -66,6 +101,7 @@ class FacebookPagePublishingClient {
     }
 
     async createFeedPost(input) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "facebook.create-feed-post");
         const endpoint = input.imageUrl ? "photos" : "feed";
         const body = input.imageUrl
             ? { url: input.imageUrl, caption: input.message, published: true }
@@ -79,6 +115,7 @@ class FacebookPagePublishingClient {
     }
 
     async initializeReel() {
+        assertSocialOutboundAllowed(this.outboundPolicy, "facebook.initialize-reel");
         const { data } = await this.http.post(
             `https://graph.facebook.com/${this.version}/${this.pageId}/video_reels`,
             { upload_phase: "start" },
@@ -88,6 +125,7 @@ class FacebookPagePublishingClient {
     }
 
     async finishReel(videoId, description) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "facebook.finish-reel");
         const { data } = await this.http.post(
             `https://graph.facebook.com/${this.version}/${this.pageId}/video_reels`,
             {
@@ -106,6 +144,7 @@ class TikTokPublishingClient {
     constructor(options = {}) {
         this.http = options.http || axios;
         this.accessToken = options.accessToken;
+        this.outboundPolicy = createSocialOutboundPolicy(options.outboundPolicy);
     }
 
     headers() {
@@ -116,6 +155,7 @@ class TikTokPublishingClient {
     }
 
     async queryCreatorInfo() {
+        assertSocialOutboundAllowed(this.outboundPolicy, "tiktok.query-creator-info");
         const { data } = await this.http.post(
             "https://open.tiktokapis.com/v2/post/publish/creator_info/query/",
             {},
@@ -125,6 +165,7 @@ class TikTokPublishingClient {
     }
 
     async initializeVideo(input, mode = "draft-upload") {
+        assertSocialOutboundAllowed(this.outboundPolicy, `tiktok.initialize-video.${mode}`);
         const endpoint = mode === "direct-post"
             ? "https://open.tiktokapis.com/v2/post/publish/video/init/"
             : "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/";
@@ -137,6 +178,7 @@ class TikTokPublishingClient {
     }
 
     async fetchStatus(publishId) {
+        assertSocialOutboundAllowed(this.outboundPolicy, "tiktok.fetch-status");
         const { data } = await this.http.post(
             "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
             { publish_id: publishId },
@@ -150,5 +192,7 @@ module.exports = {
     InstagramPublishingClient,
     FacebookPagePublishingClient,
     TikTokPublishingClient,
-    requireGraphVersion
+    requireGraphVersion,
+    createSocialOutboundPolicy,
+    assertSocialOutboundAllowed
 };

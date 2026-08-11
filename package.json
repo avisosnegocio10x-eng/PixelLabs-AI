@@ -11,7 +11,8 @@
     "check": "node --check server.js && node --check src/public/admin.js && npm run validate:n8n && node --test --test-concurrency=1",
     "build:n8n": "node scripts/buildN8nWorkflows.js",
     "validate:n8n": "node scripts/validateN8nWorkflows.js",
-    "verify:supabase": "node scripts/verifySupabaseConnection.js"
+    "verify:supabase": "node scripts/verifySupabaseConnection.js",
+    "worker:local": "node scripts/localVideoWorker.js"
   },
   "repository": {
     "type": "git",
@@ -34,6 +35,7 @@
     "express-rate-limit": "^8.6.2",
     "helmet": "^8.3.0",
     "nodemailer": "^9.0.3",
+    "tus-js-client": "4.3.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -69,20 +69,24 @@ function assertSupported(platform, format) {
 }
 
 function socialReadiness(env = process.env) {
+    const mode = env.SOCIAL_PUBLISH_MODE || "draft";
+    const externalRequestsEnabled = env.SOCIAL_EXTERNAL_REQUESTS_ENABLED === "true";
+    const liveEnabled = mode === "live" && externalRequestsEnabled;
     return {
-        mode: env.SOCIAL_PUBLISH_MODE || "draft",
+        mode,
+        externalRequestsEnabled,
         autoPublish: false,
         facebook: {
             configured: Boolean(env.META_APP_ID && env.META_APP_SECRET && env.FACEBOOK_PAGE_ID),
-            liveEnabled: (env.SOCIAL_PUBLISH_MODE || "draft") === "live"
+            liveEnabled
         },
         instagram: {
             configured: Boolean(env.META_APP_ID && env.META_APP_SECRET && env.INSTAGRAM_BUSINESS_ACCOUNT_ID),
-            liveEnabled: (env.SOCIAL_PUBLISH_MODE || "draft") === "live"
+            liveEnabled
         },
         tiktok: {
             configured: Boolean(env.TIKTOK_CLIENT_KEY && env.TIKTOK_CLIENT_SECRET && env.TIKTOK_REDIRECT_URI),
-            liveEnabled: (env.SOCIAL_PUBLISH_MODE || "draft") === "live"
+            liveEnabled
         }
     };
 }
