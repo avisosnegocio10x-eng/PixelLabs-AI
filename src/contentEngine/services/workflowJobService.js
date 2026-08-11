@@ -51,12 +51,14 @@ class WorkflowJobService {
             const existing = await this.repository.findByIdempotencyKey(type, idempotencyKey);
             if (existing) return existing;
         }
-        return this.repository.create({
+        const job = await this.repository.create({
             type,
             payload,
             idempotencyKey: idempotencyKey || null,
             maxAttempts: 3
         });
+        await this.recordEvent("WORKFLOW_QUEUED", job, null, job);
+        return job;
     }
 
     async get(id) {
@@ -93,12 +95,20 @@ class WorkflowJobService {
             errorMessage: changes.errorMessage === undefined
                 ? current.errorMessage
                 : changes.errorMessage,
-            attempt: Number.isInteger(changes.attempt) ? changes.attempt : current.attempt
+            attempt: Number.isInteger(changes.attempt) ? changes.attempt : current.attempt,
+            leaseExpiresAt: Object.hasOwn(changes, "leaseExpiresAt")
+                ? changes.leaseExpiresAt
+                : current.leaseExpiresAt
         };
         if (["COMPLETED", "FAILED", "CANCELLED"].includes(changes.status)) {
             update.completedAt = new Date().toISOString();
         }
-        return this.repository.update(id, update);
+        const updated = await this.repository.update(id, update);
+        await this.recordEvent(`WORKFLOW_${changes.status}`, updated, current, updated);
+        if (changes.status === "FAILED" || changes.retryable === true) {
+            await this.recordFailure(updated, changes.retryable === true);
+        }
+        return updated;
     }
 
     async listByStatuses(statuses) {
@@ -212,6 +222,59 @@ class WorkflowJobService {
     targetFor(type) {
         this.assertType(type);
         return resolveExecutionTarget(type);
+    }
+
+    safeSnapshot(job) {
+        if (!job) return null;
+        return {
+            workflow: job.type,
+            status: job.status,
+            attempt: job.attempt,
+            maxAttempts: job.maxAttempts,
+            executionTarget: job.executionTarget,
+            errorCode: job.errorCode || null,
+            nextAttemptAt: job.leaseExpiresAt || null
+        };
+    }
+
+    async recordEvent(action, job, before, after) {
+        if (typeof this.repository.recordEvent !== "function") return;
+        try {
+            await this.repository.recordEvent({
+                action,
+                jobId: job.id,
+                idempotencyKey: job.idempotencyKey,
+                before: this.safeSnapshot(before),
+                after: this.safeSnapshot(after)
+            });
+        } catch (error) {
+            console.error("Workflow audit logging failed", {
+                jobId: job.id,
+                code: "WORKFLOW_AUDIT_FAILED"
+            });
+        }
+    }
+
+    async recordFailure(job, retryable) {
+        if (typeof this.repository.recordFailure !== "function") return;
+        try {
+            await this.repository.recordFailure({
+                jobId: job.id,
+                workflow: job.type,
+                errorCode: job.errorCode,
+                errorMessage: job.errorMessage,
+                attempt: job.attempt,
+                maxAttempts: job.maxAttempts,
+                executionTarget: job.executionTarget,
+                retryable,
+                nextRetryAt: job.leaseExpiresAt || null
+            });
+        } catch (error) {
+            console.error("Workflow error logging failed", {
+                jobId: job.id,
+                code: "WORKFLOW_ERROR_LOG_FAILED"
+            });
+        }
     }
 }
 

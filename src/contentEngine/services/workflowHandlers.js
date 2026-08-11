@@ -5,6 +5,9 @@ const { EditorialPlannerService } = require("./editorialPlannerService");
 const { ContentLifecycleService } = require("./contentLifecycleService");
 const { ContentCorrectionService } = require("./contentCorrectionService");
 const { MetricsService } = require("./metricsService");
+const { createCrmRepository } = require("../repositories/crmRepository");
+const { createContentRepository } = require("../repositories/contentRepository");
+const { createWorkflowJobRepository } = require("../repositories/workflowJobRepository");
 
 function createWorkflowHandlers(options = {}) {
     const catalog = options.catalog || createCatalogRepository();
@@ -14,6 +17,9 @@ function createWorkflowHandlers(options = {}) {
     const lifecycle = options.lifecycle || new ContentLifecycleService(options);
     const corrections = options.corrections || new ContentCorrectionService(options);
     const metrics = options.metrics || new MetricsService(options);
+    const crm = options.crm || createCrmRepository();
+    const content = options.content || createContentRepository();
+    const jobs = options.jobs || createWorkflowJobRepository();
     return {
         "trend-research": async payload => {
             if (!Array.isArray(payload.observations) || payload.observations.length === 0) {
@@ -136,12 +142,49 @@ function createWorkflowHandlers(options = {}) {
             const written = await metrics.recordBatch(payload.items);
             return { status: "METRICS_SAVED", metricsWritten: written.length };
         },
-        "weekly-optimization": async () => metrics.weeklyRecommendations(),
-        "error-recovery": async payload => ({
-            status: "SAFE_RETRY_REVIEW_REQUIRED",
-            errorId: payload.errorId || null,
-            automaticRetryStarted: false
-        })
+        "weekly-optimization": async () => {
+            const [recommendations, crmSummary, contentItems, products] = await Promise.all([
+                metrics.weeklyRecommendations(),
+                crm.dashboard(),
+                content.list({ limit: 250 }),
+                catalog.list()
+            ]);
+            return {
+                ...recommendations,
+                crm: crmSummary,
+                contentLibrary: {
+                    total: contentItems.length,
+                    waitingHumanApproval: contentItems.filter(item => (
+                        item.status === "REQUIRES_HUMAN_APPROVAL"
+                    )).length
+                },
+                catalog: {
+                    total: products.length,
+                    available: products.filter(product => (
+                        ["AVAILABLE", "LOW_STOCK"].includes(product.availabilityStatus)
+                    )).length
+                },
+                automaticSettingsChanged: false,
+                autoPublish: false
+            };
+        },
+        "error-recovery": async payload => {
+            const failed = await jobs.listByStatuses(["FAILED"]);
+            return {
+                status: failed.length ? "SAFE_RETRY_REVIEW_REQUIRED" : "NO_FAILED_JOBS",
+                errorId: payload.errorId || null,
+                failedJobs: failed.slice(0, 100).map(job => ({
+                    id: job.id,
+                    workflow: job.type,
+                    errorCode: job.errorCode,
+                    attempt: job.attempt,
+                    maxAttempts: job.maxAttempts,
+                    completedAt: job.completedAt
+                })),
+                automaticRetryStarted: false,
+                humanApprovalRequired: true
+            };
+        }
     };
 }
 

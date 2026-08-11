@@ -145,6 +145,35 @@ class FileWorkflowJobRepository {
             errorMessage: null
         });
     }
+
+    async recordEvent(input) {
+        await fs.mkdir(this.directory, { recursive: true });
+        const event = {
+            at: new Date().toISOString(),
+            actorType: "n8n",
+            ...input
+        };
+        await fs.appendFile(
+            path.join(this.directory, "workflow-events.jsonl"),
+            `${JSON.stringify(event)}\n`,
+            "utf8"
+        );
+        return event;
+    }
+
+    async recordFailure(input) {
+        await fs.mkdir(this.directory, { recursive: true });
+        const event = {
+            at: new Date().toISOString(),
+            ...input
+        };
+        await fs.appendFile(
+            path.join(this.directory, "workflow-errors.jsonl"),
+            `${JSON.stringify(event)}\n`,
+            "utf8"
+        );
+        return event;
+    }
 }
 
 class SupabaseWorkflowJobRepository {
@@ -267,6 +296,39 @@ class SupabaseWorkflowJobRepository {
             .maybeSingle();
         if (error) throw new Error(`No se pudo confirmar el arrendamiento: ${error.message}`);
         return mapJob(data);
+    }
+
+    async recordEvent(input) {
+        const { error } = await this.client.from("audit_logs").insert({
+            actor_type: "n8n",
+            action: input.action,
+            entity_type: "workflow_job",
+            entity_id: input.jobId,
+            before_data: input.before || null,
+            after_data: input.after || null,
+            request_id: input.idempotencyKey || null
+        });
+        if (error) throw new Error(`No se pudo registrar la ejecución: ${error.message}`);
+    }
+
+    async recordFailure(input) {
+        const { error } = await this.client.from("content_errors").insert({
+            entity_type: "workflow_job",
+            entity_id: input.jobId,
+            workflow: input.workflow,
+            severity: "ERROR",
+            error_code: input.errorCode || "WORKFLOW_EXECUTION_FAILED",
+            message: String(input.errorMessage || "El flujo falló.").slice(0, 2000),
+            safe_context: {
+                attempt: input.attempt,
+                maxAttempts: input.maxAttempts,
+                executionTarget: input.executionTarget
+            },
+            retryable: input.retryable === true,
+            retry_count: Math.max(0, Number(input.attempt || 1) - 1),
+            next_retry_at: input.nextRetryAt || null
+        });
+        if (error) throw new Error(`No se pudo registrar el error: ${error.message}`);
     }
 }
 

@@ -3,5 +3,6 @@ node_modules/
 local-worker/.env
 local-worker/inbox/
 local-worker/work/
+n8n/local/config.env
 storage/
 npm-debug.log*

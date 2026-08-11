@@ -37,5 +37,9 @@ Usa `.env.example` como referencia.
 - `PIXELLABS_API_URL`: URL pública del backend para n8n.
 - `PIXELLABS_N8N_API_TOKEN`: copia de `N8N_WEBHOOK_SECRET`, configurada dentro de
   n8n y nunca exportada en JSON. No usar el token administrativo.
+- `N8N_REQUIRE_HTTPS`: debe ser `true` en Render; rechaza automatizaciones que
+  no lleguen por HTTPS.
+- `N8N_WEBHOOK_SECRET`, `ADMIN_API_TOKEN` y `LOCAL_WORKER_API_TOKEN` deben ser
+  distintos. En producción, el secreto de n8n debe tener al menos 32 caracteres.
 
 `CONTENT_ENGINE_AUTO_PUBLISH` no sustituye la configuración de base de datos ni las barreras; la publicación continúa apagada hasta aprobación explícita.

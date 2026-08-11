@@ -15,6 +15,16 @@ function requireAutomationAuth(req, res, next) {
     if (!safeEqual(suppliedToken, configuredToken)) {
         return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
     }
+    if (
+        process.env.NODE_ENV === "production" &&
+        process.env.N8N_REQUIRE_HTTPS !== "false" &&
+        !req.secure
+    ) {
+        return res.status(400).json({
+            ok: false,
+            error: "AUTOMATION_HTTPS_REQUIRED"
+        });
+    }
     next();
 }
 

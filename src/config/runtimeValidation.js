@@ -24,6 +24,21 @@ function validateRuntimeConfiguration(environment = process.env) {
     }
     if (
         environment.NODE_ENV === "production" &&
+        environment.N8N_WEBHOOK_SECRET &&
+        environment.N8N_WEBHOOK_SECRET.length < 32
+    ) {
+        errors.push("N8N_WEBHOOK_SECRET_TOO_SHORT");
+    }
+    const privilegedTokens = [
+        environment.ADMIN_API_TOKEN,
+        environment.N8N_WEBHOOK_SECRET,
+        environment.LOCAL_WORKER_API_TOKEN
+    ].filter(Boolean);
+    if (new Set(privilegedTokens).size !== privilegedTokens.length) {
+        errors.push("PRIVILEGED_TOKENS_MUST_BE_DISTINCT");
+    }
+    if (
+        environment.NODE_ENV === "production" &&
         videoRuntime.enabled &&
         !videoRuntime.durableLocalStorage
     ) {

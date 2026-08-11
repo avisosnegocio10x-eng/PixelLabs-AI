@@ -51,4 +51,8 @@ test("n8n puede actualizar el resultado de un trabajo persistente", async t => {
     assert.equal(completed.status, "COMPLETED");
     assert.equal(completed.result.decision, "REQUIRES_HUMAN_APPROVAL");
     assert.ok(completed.completedAt);
+    const events = await fs.readFile(path.join(directory, "workflow-events.jsonl"), "utf8");
+    assert.match(events, /WORKFLOW_QUEUED/);
+    assert.match(events, /WORKFLOW_COMPLETED/);
+    assert.doesNotMatch(events, /decision/);
 });

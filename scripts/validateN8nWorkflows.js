@@ -6,6 +6,13 @@ const files = fs.readdirSync(directory).filter(file => file.endsWith(".json")).s
 const errors = [];
 const names = new Set();
 const nodeIds = new Set();
+const ALLOWED_NODE_TYPES = new Set([
+    "n8n-nodes-base.manualTrigger",
+    "n8n-nodes-base.scheduleTrigger",
+    "n8n-nodes-base.executeWorkflowTrigger",
+    "n8n-nodes-base.httpRequest",
+    "n8n-nodes-base.wait"
+]);
 
 if (files.length !== 12) errors.push(`Se esperaban 12 flujos y se encontraron ${files.length}.`);
 
@@ -15,7 +22,7 @@ for (const file of files) {
     if (names.has(workflow.name)) errors.push(`${file}: nombre duplicado.`);
     names.add(workflow.name);
     if (workflow.active !== false) errors.push(`${file}: active debe ser false.`);
-    if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 4) {
+    if (!Array.isArray(workflow.nodes) || workflow.nodes.length < 5) {
         errors.push(`${file}: debe encolar, esperar y consultar el resultado.`);
     }
     const serialized = JSON.stringify(workflow);
@@ -29,10 +36,19 @@ for (const file of files) {
     if (!serialized.includes("/automation/jobs/")) {
         errors.push(`${file}: debe usar la API limitada de automatización.`);
     }
+    if (serialized.includes("SUPABASE_SERVICE_ROLE_KEY") || serialized.includes("SUPABASE_URL")) {
+        errors.push(`${file}: n8n no debe recibir acceso directo privilegiado a Supabase.`);
+    }
+    if (!workflow.settings?.saveExecutionProgress) {
+        errors.push(`${file}: debe conservar progreso de ejecución para recuperación.`);
+    }
     for (const node of workflow.nodes || []) {
         if (!node.id) errors.push(`${file}: un nodo no tiene id.`);
         if (nodeIds.has(node.id)) errors.push(`${file}: id de nodo repetido entre flujos.`);
         nodeIds.add(node.id);
+        if (!ALLOWED_NODE_TYPES.has(node.type)) {
+            errors.push(`${file}: contiene un tipo de nodo no autorizado (${node.type}).`);
+        }
         if (node.type === "n8n-nodes-base.httpRequest") {
             const url = String(node.parameters?.url || "");
             if (!url.includes("$env.PIXELLABS_API_URL")) {
@@ -40,6 +56,40 @@ for (const file of files) {
             }
             if (url.includes("/admin/")) {
                 errors.push(`${file}: HTTP Request no debe acceder al panel administrativo.`);
+            }
+            if (node.retryOnFail !== true || node.maxTries !== 3) {
+                errors.push(`${file}: cada solicitud HTTP debe tener tres intentos seguros.`);
+            }
+            const headers = node.parameters?.headerParameters?.parameters || [];
+            if (!headers.some(header => header.name === "Authorization")) {
+                errors.push(`${file}: falta autenticación en una solicitud HTTP.`);
+            }
+            if (!headers.some(header => header.name === "X-PixelLabs-Workflow")) {
+                errors.push(`${file}: falta vinculación explícita del flujo.`);
+            }
+            if (node.parameters?.method === "POST") {
+                if (!headers.some(header => header.name === "Idempotency-Key")) {
+                    errors.push(`${file}: falta Idempotency-Key en el encolado.`);
+                }
+                if (
+                    node.parameters?.contentType !== "json" ||
+                    node.parameters?.specifyBody !== "keypair" ||
+                    node.parameters?.body ||
+                    node.parameters?.rawContentType ||
+                    node.parameters?.jsonBody
+                ) {
+                    errors.push(`${file}: el encolado debe usar el cuerpo JSON nativo de n8n.`);
+                }
+                const bodyFields = node.parameters?.bodyParameters?.parameters || [];
+                if (!bodyFields.some(field => field.name === "source" && field.value === "n8n")) {
+                    errors.push(`${file}: el payload debe fijar source=n8n.`);
+                }
+                if (!bodyFields.some(field => field.name === "payload" && String(field.value).includes("$json"))) {
+                    errors.push(`${file}: el payload debe conservar los datos de entrada.`);
+                }
+                if (!bodyFields.some(field => field.name === "n8nExecutionId")) {
+                    errors.push(`${file}: el payload no registra la ejecución de n8n.`);
+                }
             }
         }
     }
@@ -51,6 +101,9 @@ for (const file of files) {
     }
     if (!workflow.nodes.some(node => node.type === "n8n-nodes-base.wait")) {
         errors.push(`${file}: falta espera no bloqueante antes de consultar el worker.`);
+    }
+    if (!workflow.nodes.some(node => node.type === "n8n-nodes-base.executeWorkflowTrigger")) {
+        errors.push(`${file}: falta disparador interno para pruebas automatizadas.`);
     }
 }
 

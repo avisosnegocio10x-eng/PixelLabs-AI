@@ -37,6 +37,8 @@ services:
         generateValue: true
       - key: N8N_WEBHOOK_SECRET
         generateValue: true
+      - key: N8N_REQUIRE_HTTPS
+        value: "true"
       - key: LOCAL_WORKER_API_TOKEN
         generateValue: true
       - key: LOCAL_WORKER_MAX_ARTIFACT_BYTES
