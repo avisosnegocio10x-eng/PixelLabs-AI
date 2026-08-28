@@ -1,29 +1,97 @@
 // ================================
-// PIXELLABS - QUOTE EXTRACTOR V4
+// PIXELLABS - QUOTE EXTRACTOR V5
 // ================================
+
+function normalizar(valor) {
+    return String(valor || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
+function quitarMedidas(texto) {
+    return normalizar(texto)
+        .replace(/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?(?:\s*(?:mm|cm|m|milimetros?|centimetros?|metros?))?/gi, " ")
+        .replace(/\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|milimetros?|centimetros?|metros?)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function extraerCantidadMensaje(texto) {
+    const limpio = quitarMedidas(texto)
+        .replace(/[.!?,;:]+$/g, "")
+        .trim();
+
+    if (!limpio) return null;
+
+    const numerosPalabra = {
+        uno: "1", una: "1", dos: "2", tres: "3", cuatro: "4",
+        cinco: "5", seis: "6", siete: "7", ocho: "8", nueve: "9",
+        diez: "10", once: "11", doce: "12", trece: "13",
+        catorce: "14", quince: "15", dieciseis: "16", diecisiete: "17",
+        dieciocho: "18", diecinueve: "19", veinte: "20"
+    };
+
+    const palabraNumero = "(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte)";
+
+    let match = limpio.match(
+        /\b(\d+)\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresion(?:es)?|ejemplar(?:es)?|articulo(?:s)?|copias?)\b/i
+    );
+    if (match) return match[1];
+
+    match = limpio.match(
+        /\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|solo\s+quiero|solamente\s+quiero|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|es|va\s+a\s+ser|van\s+a\s+ser|solo|solamente|unicamente)\s*(?:de\s*)?(\d+)\b/i
+    );
+    if (match) return match[1];
+
+    match = limpio.match(/\b(\d+)\s*(?:nada\s+mas|nomas|solamente|solo|unicamente)\b/i);
+    if (match) return match[1];
+
+    if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}(?:\s+(?:de\s+)?[a-zñ]+(?:\s+[a-zñ]+){0,3})?$/.test(limpio)) {
+        if (!/\b(?:modelo|version|año|ano|numero|talla|escala|codigo)\b/i.test(limpio)) {
+            const numero = limpio.match(/\d+/);
+            if (numero) return numero[0];
+        }
+    }
+
+    match = limpio.match(
+        new RegExp(`\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|solo\\s+quiero|solamente\\s+quiero|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|es|va\\s+a\\s+ser|van\\s+a\\s+ser|solo|solamente|unicamente)\\s*(?:de\\s*)?${palabraNumero}\\b`, "i")
+    );
+    if (match) return numerosPalabra[match[1].toLowerCase()] || null;
+
+    match = limpio.match(new RegExp(`^(?:solo\\s+|solamente\\s+|unicamente\\s+)?${palabraNumero}(?:\\s+(?:solo|nada\\s+mas|nomas|por\\s+favor))?$`, "i"));
+    if (match) return numerosPalabra[match[1].toLowerCase()] || null;
+
+    if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo|producto|copia)\b/i.test(limpio)) {
+        return "1";
+    }
+
+    return null;
+}
 
 function extraerCotizacion(conversation) {
     const mensajesUsuario = conversation
         .filter(msg => msg.role === "user")
         .map(msg => String(msg.message || ""));
 
-    const mensajesTexto = mensajesUsuario.map(mensaje => mensaje.toLowerCase().trim());
+    const mensajesTexto = mensajesUsuario.map(mensaje => normalizar(mensaje));
     const texto = mensajesTexto.join("\n");
-    const contiene = frase => mensajesTexto.some(mensaje => mensaje.includes(frase));
+    const contiene = frase => mensajesTexto.some(mensaje => mensaje.includes(normalizar(frase)));
 
     // ======================================
-    // COLORES DISPONIBLES
+    // COLORES
     // ======================================
 
     const coloresDisponibles = [
         "negro", "negra", "blanco", "blanca", "gris", "gris oscuro",
         "gris oscura", "gris claro", "gris clara", "rosa", "rosado",
         "rosada", "fucsia", "turquesa", "verde", "verde brillante",
-        "verde bambú", "verde militar", "verde oliva", "rojo", "azul",
+        "verde bambu", "verde militar", "verde oliva", "rojo", "azul",
         "azul marino", "azul cielo", "celeste", "amarillo", "naranja",
-        "morado", "violeta", "café", "cafe", "marrón", "marron",
-        "beige", "crema", "dorado", "oro", "plateado", "plata",
-        "cobre", "bronce", "transparente"
+        "morado", "violeta", "cafe", "marron", "beige", "crema",
+        "dorado", "oro", "plateado", "plata", "cobre", "bronce",
+        "transparente"
     ];
 
     let ultimoColor = null;
@@ -37,7 +105,7 @@ function extraerCotizacion(conversation) {
     });
 
     // ======================================
-    // MATERIALES
+    // MATERIAL
     // ======================================
 
     const materiales = [
@@ -54,18 +122,21 @@ function extraerCotizacion(conversation) {
     });
 
     // ======================================
-    // PRODUCTOS
+    // PRODUCTO
     // ======================================
 
     const productos = [
         "llavero", "figura", "maceta", "organizador", "soporte",
         "porta celular", "portacelular", "logo", "letras", "letrero",
         "busto", "casco", "espada", "katana", "auto", "carro",
-        "automóvil", "camión", "moto", "avión", "barco", "juguete",
+        "automovil", "camion", "moto", "avion", "barco", "juguete",
         "prototipo", "pieza", "repuesto", "tapa", "base", "placa",
-        "engranaje", "decoración", "caja", "rompecabezas", "rompecabeza",
-        "modelo", "miniatura", "trofeo", "fidget", "dragón", "dragon",
-        "dinosaurio"
+        "engranaje", "decoracion", "caja", "rompecabezas", "rompecabeza",
+        "modelo", "miniatura", "trofeo", "fidget", "dragon",
+        "dinosaurio", "capibara", "orca", "gato", "estrella", "cubo",
+        "portalapices", "joyero", "ballena", "mariposa", "rotulo",
+        "medalla", "premio", "estuche", "contenedor", "adaptador",
+        "gancho", "perchero", "adorno"
     ];
 
     let producto = "No especificado";
@@ -87,7 +158,6 @@ function extraerCotizacion(conversation) {
         contiene("no cuento con stl") ||
         contiene("sin archivo stl") ||
         contiene("sin stl") ||
-        contiene("únicamente tengo una imagen") ||
         contiene("unicamente tengo una imagen") ||
         contiene("solo tengo una imagen") ||
         contiene("solo cuento con una imagen");
@@ -101,9 +171,7 @@ function extraerCotizacion(conversation) {
         contiene("cuento con stl") ||
         contiene("adjunto el stl") ||
         contiene("adjunto stl") ||
-        contiene("te envío el stl") ||
         contiene("te envio el stl") ||
-        contiene("aquí está el stl") ||
         contiene("aqui esta el stl")
     )) {
         stl = "Sí";
@@ -117,7 +185,6 @@ function extraerCotizacion(conversation) {
         contiene("[imagen]") ||
         contiene("imagen") ||
         contiene("foto") ||
-        contiene("fotografía") ||
         contiene("fotografia")
             ? "Sí"
             : "No";
@@ -128,75 +195,10 @@ function extraerCotizacion(conversation) {
 
     let cantidad = "No especificada";
 
-    const numerosPalabra = {
-        uno: "1",
-        una: "1",
-        dos: "2",
-        tres: "3",
-        cuatro: "4",
-        cinco: "5",
-        seis: "6",
-        siete: "7",
-        ocho: "8",
-        nueve: "9",
-        diez: "10"
-    };
-
-    const palabraNumero = "(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)";
-
     for (let i = mensajesTexto.length - 1; i >= 0; i--) {
-        const mensaje = mensajesTexto[i]
-            .replace(/[.!?,;:]+$/g, "")
-            .trim();
-
-        let match = mensaje.match(
-            /\b(\d+)\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresi[oó]n(?:es)?|ejemplar(?:es)?)\b/i
-        );
-
-        if (match) {
-            cantidad = match[1];
-            break;
-        }
-
-        match = mensaje.match(
-            /\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\s*(?:de\s*)?(\d+)\b(?!\s*(?:mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?))/i
-        );
-
-        if (match) {
-            cantidad = match[1];
-            break;
-        }
-
-        match = mensaje.match(/\b(\d+)\s*(?:nada\s+m[aá]s|nom[aá]s|solamente|solo)\b/i);
-
-        if (match) {
-            cantidad = match[1];
-            break;
-        }
-
-        if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}$/.test(mensaje)) {
-            cantidad = mensaje.match(/\d+/)[0];
-            break;
-        }
-
-        match = mensaje.match(
-            new RegExp(`\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\\s*(?:de\\s*)?${palabraNumero}\\b`, "i")
-        );
-
-        if (match) {
-            cantidad = numerosPalabra[match[1].toLowerCase()] || "1";
-            break;
-        }
-
-        match = mensaje.match(new RegExp(`^(?:solo\\s+|solamente\\s+)?${palabraNumero}$`, "i"));
-
-        if (match) {
-            cantidad = numerosPalabra[match[1].toLowerCase()];
-            break;
-        }
-
-        if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo)\b/i.test(mensaje)) {
-            cantidad = "1";
+        const valor = extraerCantidadMensaje(mensajesTexto[i]);
+        if (valor) {
+            cantidad = valor;
             break;
         }
     }
@@ -209,7 +211,7 @@ function extraerCotizacion(conversation) {
 
     for (const mensaje of mensajesTexto) {
         let match = mensaje.match(
-            /(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros?).*?(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros?)/i
+            /(\d+(?:[.,]\d+)?)\s*(?:cm|centimetros?).*?(\d+(?:[.,]\d+)?)\s*(?:cm|centimetros?)/i
         );
 
         if (match) {
@@ -218,7 +220,7 @@ function extraerCotizacion(conversation) {
         }
 
         match = mensaje.match(
-            /(\d+(?:[.,]\d+)?)\s*(mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?)\b/i
+            /(\d+(?:[.,]\d+)?)\s*(mm|cm|m|milimetros?|centimetros?|metros?)\b/i
         );
 
         if (match) {
