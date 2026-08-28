@@ -15,6 +15,65 @@ function normalizar(valor) {
         .trim();
 }
 
+function quitarMedidas(texto) {
+    return normalizar(texto)
+        .replace(/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?(?:\s*(?:mm|cm|m|milimetros?|centimetros?|metros?))?/gi, " ")
+        .replace(/\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|milimetros?|centimetros?|metros?)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function pareceRespuestaDeCantidad(texto) {
+    const limpio = quitarMedidas(texto)
+        .replace(/[.!?,;:]+$/g, "")
+        .trim();
+
+    if (!limpio) return false;
+
+    const numeroPalabra = "(?:uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte)";
+
+    // 1 unidad, 2 piezas, 3 llaveros, etc.
+    if (/\b\d+\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresion(?:es)?|ejemplar(?:es)?|articulo(?:s)?|copias?)\b/i.test(limpio)) {
+        return true;
+    }
+
+    // quiero 1, necesito 2, seria 1, solo 1, es 1, etc.
+    if (/\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|solo\s+quiero|solamente\s+quiero|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|es|seria\s+solo|va\s+a\s+ser|van\s+a\s+ser|solo|solamente|unicamente)\s*(?:de\s*)?\d+\b/i.test(limpio)) {
+        return true;
+    }
+
+    // 1 nada más, 2 nomás, 1 solo.
+    if (/\b\d+\s*(?:nada\s+mas|nomas|solamente|solo|unicamente)\b/i.test(limpio)) {
+        return true;
+    }
+
+    // Respuesta corta: "1", "cantidad 1", "1 de esos", "2 por favor".
+    if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}(?:\s+(?:de\s+)?[a-zñ]+(?:\s+[a-zñ]+){0,3})?$/.test(limpio)) {
+        const palabrasBloqueadas = /\b(?:modelo|version|año|ano|numero|talla|escala|codigo)\b/i;
+        if (!palabrasBloqueadas.test(limpio)) return true;
+    }
+
+    // "uno", "una", "solo uno", "una nada más".
+    if (new RegExp(`^(?:solo\\s+|solamente\\s+|unicamente\\s+)?${numeroPalabra}(?:\\s+(?:solo|nada\\s+mas|nomas|por\\s+favor))?$`, "i").test(limpio)) {
+        return true;
+    }
+
+    // "quiero uno", "es una", "seria uno", "solo necesito dos".
+    if (new RegExp(
+        `\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|solo\\s+quiero|solamente\\s+quiero|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|es|va\\s+a\\s+ser|van\\s+a\\s+ser|solo|solamente|unicamente)\\s*(?:de\\s*)?${numeroPalabra}\\b`,
+        "i"
+    ).test(limpio)) {
+        return true;
+    }
+
+    // "una pieza", "un llavero", etc.
+    if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo|producto|copia)\b/i.test(limpio)) {
+        return true;
+    }
+
+    return false;
+}
+
 function obtenerEstadoConversacion(conversation) {
     const estado = {
         producto: false,
@@ -175,51 +234,10 @@ function obtenerEstadoConversacion(conversation) {
     // CANTIDAD
     // ======================================
 
-    const numeroPalabra = "(?:uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte)";
+    estado.cantidad = mensajesUsuario.some(pareceRespuestaDeCantidad);
 
-    estado.cantidad = mensajesUsuario.some(mensaje => {
-        const limpio = mensaje
-            .replace(/[.!?,;:]+$/g, "")
-            .trim();
-
-        if (/\b\d+\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresion(?:es)?|ejemplar(?:es)?|articulo(?:s)?)\b/i.test(limpio)) {
-            return true;
-        }
-
-        if (/\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|solo|solamente)\s*(?:de\s*)?\d+\b(?!\s*(?:mm|cm|m|milimetros?|centimetros?|metros?))/i.test(limpio)) {
-            return true;
-        }
-
-        if (/\b(?:solo\s+quiero|quiero\s+solo|nada\s+mas|nomas|unicamente)\s+\d+\b(?!\s*(?:mm|cm|m))/i.test(limpio)) {
-            return true;
-        }
-
-        if (/\b\d+\s*(?:nada\s+mas|nomas|solamente|solo)\b/i.test(limpio)) {
-            return true;
-        }
-
-        if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}$/.test(limpio)) {
-            return true;
-        }
-
-        if (new RegExp(`^(?:solo\\s+|solamente\\s+|unicamente\\s+)?${numeroPalabra}(?:\\s+solo|\\s+nada\\s+mas|\\s+nomas)?$`, "i").test(limpio)) {
-            return true;
-        }
-
-        if (new RegExp(
-            `\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|necesito|quiero|solo\\s+quiero|quiero\\s+solo|quisiera|ocupo|seria|serian|seran|son|solo|solamente|unicamente|nada\\s+mas)\\s*(?:de\\s*)?${numeroPalabra}\\b`,
-            "i"
-        ).test(limpio)) {
-            return true;
-        }
-
-        if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo|producto)\b/i.test(limpio)) {
-            return true;
-        }
-
-        return false;
-    });
-
+    // Si Gemini preguntó por cantidad, aceptamos respuestas naturales
+    // como "uno", "una", "1 de esos", "solo una", etc.
     if (!estado.cantidad) {
         for (let i = 1; i < conversation.length; i++) {
             const actual = conversation[i];
@@ -231,20 +249,12 @@ function obtenerEstadoConversacion(conversation) {
             const respuesta = normalizar(actual.message);
 
             const preguntaCantidad =
-                pregunta.includes("cuantas unidades") ||
-                pregunta.includes("cuantos necesitas") ||
-                pregunta.includes("cuantas necesitas") ||
-                pregunta.includes("que cantidad") ||
-                pregunta.includes("cantidad necesitas") ||
-                pregunta.includes("cantidad deseas");
+                /\b(cuantos|cuantas|cantidad|unidades|piezas|ejemplares|copias)\b/i.test(pregunta) ||
+                pregunta.includes("cuanto necesitas") ||
+                pregunta.includes("cuanto deseas") ||
+                pregunta.includes("cuanto quieres");
 
-            const respuestaCantidad =
-                /\b\d{1,3}\b/.test(respuesta) ||
-                new RegExp(`\\b${numeroPalabra}\\b`, "i").test(respuesta);
-
-            const pareceMedida = /\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|milimetros?|centimetros?|metros?)\b/i.test(respuesta);
-
-            if (preguntaCantidad && respuestaCantidad && !pareceMedida) {
+            if (preguntaCantidad && pareceRespuestaDeCantidad(respuesta)) {
                 estado.cantidad = true;
                 break;
             }
