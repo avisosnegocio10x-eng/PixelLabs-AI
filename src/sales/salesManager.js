@@ -7,6 +7,14 @@ const campos = [
     "tamaño"
 ];
 
+function normalizar(valor) {
+    return String(valor || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
 function obtenerEstadoConversacion(conversation) {
     const estado = {
         producto: false,
@@ -19,10 +27,10 @@ function obtenerEstadoConversacion(conversation) {
 
     const mensajesUsuario = conversation
         .filter(m => m.role === "user")
-        .map(m => String(m.message || "").toLowerCase().trim());
+        .map(m => normalizar(m.message));
 
     const texto = mensajesUsuario.join("\n");
-    const contiene = frase => mensajesUsuario.some(mensaje => mensaje.includes(frase));
+    const contiene = frase => mensajesUsuario.some(mensaje => mensaje.includes(normalizar(frase)));
 
     // ======================================
     // PRODUCTO
@@ -32,38 +40,74 @@ function obtenerEstadoConversacion(conversation) {
         "llavero", "figura", "maceta", "organizador", "soporte",
         "porta celular", "portacelular", "logo", "letras", "letrero",
         "busto", "casco", "espada", "katana", "auto", "carro",
-        "automóvil", "camión", "moto", "avión", "barco", "juguete",
+        "automovil", "camion", "moto", "avion", "barco", "juguete",
         "prototipo", "pieza", "repuesto", "tapa", "base", "placa",
-        "engranaje", "decoración", "caja", "rompecabezas", "rompecabeza",
-        "modelo", "miniatura", "trofeo", "fidget", "dragón", "dragon",
-        "dinosaurio"
+        "engranaje", "decoracion", "caja", "rompecabezas", "rompecabeza",
+        "modelo", "miniatura", "trofeo", "fidget", "dragon",
+        "dinosaurio", "capibara", "orca", "gato", "estrella", "cubo",
+        "portalapices", "joyero", "ballena", "mariposa", "nombre",
+        "rotulo", "medalla", "premio", "estuche", "contenedor",
+        "adaptador", "gancho", "perchero", "adorno"
     ];
 
     estado.producto = productos.some(producto => texto.includes(producto));
 
     if (!estado.producto) {
+        const palabrasNoProducto = [
+            "cotizacion", "informacion", "imagen", "foto", "ayuda", "idea",
+            "precio", "presupuesto", "consulta", "pregunta", "favor", "algo",
+            "nombre", "color", "cantidad", "medida", "tamano", "stl", "archivo"
+        ];
+
         estado.producto = mensajesUsuario.some(mensaje => {
             const coincidencia = mensaje.match(
-                /\b(?:quiero|necesito|deseo|busco|cotizar|hacer|imprimir|crear)\s+(?:cotizar\s+|hacer\s+|imprimir\s+|crear\s+)?(?:un|una|unos|unas)\s+([a-záéíóúñ][a-záéíóúñ0-9_-]{2,})/i
+                /\b(?:quiero|quisiera|necesito|deseo|busco|ocupo|cotizar|hacer|imprimir|crear|me gustaria)\s+(?:(?:que\s+(?:me|nos)\s+)?(?:cotizar|hacer|imprimir|crear)\s+)?(?:(?:un|una|unos|unas|el|la|los|las)\s+)?([a-zñ][a-zñ0-9_-]{1,}(?:\s+[a-zñ][a-zñ0-9_-]{1,}){0,4})/i
             );
 
             if (!coincidencia) return false;
 
-            const palabrasNoProducto = [
-                "cotización", "cotizacion", "información", "informacion",
-                "imagen", "foto", "ayuda", "idea", "precio", "presupuesto",
-                "consulta", "pregunta", "favor", "algo"
-            ];
+            const candidato = coincidencia[1].trim();
+            const primeraPalabra = candidato.split(/\s+/)[0];
 
-            return !palabrasNoProducto.includes(coincidencia[1].toLowerCase());
+            return !palabrasNoProducto.includes(primeraPalabra);
         });
+    }
+
+    if (!estado.producto) {
+        for (let i = 1; i < conversation.length; i++) {
+            const actual = conversation[i];
+            const anterior = conversation[i - 1];
+
+            if (actual?.role !== "user" || anterior?.role !== "assistant") continue;
+
+            const pregunta = normalizar(anterior.message);
+            const respuesta = normalizar(actual.message);
+
+            const preguntaProducto =
+                pregunta.includes("que producto") ||
+                pregunta.includes("que deseas imprimir") ||
+                pregunta.includes("que quieres imprimir") ||
+                pregunta.includes("que necesitas imprimir") ||
+                pregunta.includes("que pieza") ||
+                pregunta.includes("que deseas cotizar") ||
+                pregunta.includes("que quieres cotizar") ||
+                pregunta.includes("que necesitas cotizar");
+
+            const respuestaValida =
+                /[a-zñ]/i.test(respuesta) &&
+                respuesta.length >= 2 &&
+                respuesta.length <= 100 &&
+                !/^(hola|buenas|gracias|si|no|ok|vale|lucas|a nombre de)/i.test(respuesta);
+
+            if (preguntaProducto && respuestaValida) {
+                estado.producto = true;
+                break;
+            }
+        }
     }
 
     // ======================================
     // STL / ARCHIVO
-    // "archivo" significa que el cliente YA respondió si tiene STL o no.
-    // Se revisa mensaje por mensaje para evitar coincidencias falsas entre
-    // el final de un mensaje y el inicio del siguiente.
     // ======================================
 
     const noTieneSTL =
@@ -74,7 +118,6 @@ function obtenerEstadoConversacion(conversation) {
         contiene("sin stl") ||
         contiene("sin archivo stl") ||
         contiene("solo tengo una imagen") ||
-        contiene("únicamente tengo una imagen") ||
         contiene("unicamente tengo una imagen") ||
         contiene("solo cuento con una imagen");
 
@@ -86,9 +129,7 @@ function obtenerEstadoConversacion(conversation) {
             contiene("cuento con archivo stl") ||
             contiene("adjunto el stl") ||
             contiene("adjunto stl") ||
-            contiene("te envío el stl") ||
             contiene("te envio el stl") ||
-            contiene("aquí está el stl") ||
             contiene("aqui esta el stl")
         );
 
@@ -112,7 +153,6 @@ function obtenerEstadoConversacion(conversation) {
             contiene("[imagen]") ||
             contiene("imagen") ||
             contiene("foto") ||
-            contiene("fotografía") ||
             contiene("fotografia")
         );
 
@@ -125,8 +165,8 @@ function obtenerEstadoConversacion(conversation) {
     const colores = [
         "negro", "negra", "blanco", "blanca", "gris", "grises",
         "gris oscuro", "gris oscura", "gris claro", "gris clara",
-        "rosa", "rosado", "rosada", "verde", "verdes", "verde bambú",
-        "verde brillante", "café", "cafe", "marrón", "marron"
+        "rosa", "rosado", "rosada", "verde", "verdes", "verde bambu",
+        "verde brillante", "cafe", "marron"
     ];
 
     estado.color = colores.some(color => texto.includes(color));
@@ -135,53 +175,88 @@ function obtenerEstadoConversacion(conversation) {
     // CANTIDAD
     // ======================================
 
-    const palabraNumero = "(?:uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)";
+    const numeroPalabra = "(?:uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte)";
 
-    estado.cantidad = mensajesUsuario.some(mensajeOriginal => {
-        const mensaje = mensajeOriginal
+    estado.cantidad = mensajesUsuario.some(mensaje => {
+        const limpio = mensaje
             .replace(/[.!?,;:]+$/g, "")
             .trim();
 
-        if (/\b\d+\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresi[oó]n(?:es)?|ejemplar(?:es)?)\b/i.test(mensaje)) {
+        if (/\b\d+\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresion(?:es)?|ejemplar(?:es)?|articulo(?:s)?)\b/i.test(limpio)) {
             return true;
         }
 
-        if (/\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\s*(?:de\s*)?\d+\b(?!\s*(?:mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?))/i.test(mensaje)) {
+        if (/\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|necesito|quiero|quisiera|ocupo|seria|serian|seran|son|solo|solamente)\s*(?:de\s*)?\d+\b(?!\s*(?:mm|cm|m|milimetros?|centimetros?|metros?))/i.test(limpio)) {
             return true;
         }
 
-        if (/\b\d+\s*(?:nada\s+m[aá]s|nom[aá]s|solamente|solo)\b/i.test(mensaje)) {
+        if (/\b(?:solo\s+quiero|quiero\s+solo|nada\s+mas|nomas|unicamente)\s+\d+\b(?!\s*(?:mm|cm|m))/i.test(limpio)) {
             return true;
         }
 
-        if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}$/.test(mensaje)) {
+        if (/\b\d+\s*(?:nada\s+mas|nomas|solamente|solo)\b/i.test(limpio)) {
             return true;
         }
 
-        if (new RegExp(`^(?:solo\\s+|solamente\\s+)?${palabraNumero}$`, "i").test(mensaje)) {
+        if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}$/.test(limpio)) {
+            return true;
+        }
+
+        if (new RegExp(`^(?:solo\\s+|solamente\\s+|unicamente\\s+)?${numeroPalabra}(?:\\s+solo|\\s+nada\\s+mas|\\s+nomas)?$`, "i").test(limpio)) {
             return true;
         }
 
         if (new RegExp(
-            `\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\\s*(?:de\\s*)?${palabraNumero}\\b`,
+            `\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|necesito|quiero|solo\\s+quiero|quiero\\s+solo|quisiera|ocupo|seria|serian|seran|son|solo|solamente|unicamente|nada\\s+mas)\\s*(?:de\\s*)?${numeroPalabra}\\b`,
             "i"
-        ).test(mensaje)) {
+        ).test(limpio)) {
             return true;
         }
 
-        if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo)\b/i.test(mensaje)) {
+        if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo|producto)\b/i.test(limpio)) {
             return true;
         }
 
         return false;
     });
 
+    if (!estado.cantidad) {
+        for (let i = 1; i < conversation.length; i++) {
+            const actual = conversation[i];
+            const anterior = conversation[i - 1];
+
+            if (actual?.role !== "user" || anterior?.role !== "assistant") continue;
+
+            const pregunta = normalizar(anterior.message);
+            const respuesta = normalizar(actual.message);
+
+            const preguntaCantidad =
+                pregunta.includes("cuantas unidades") ||
+                pregunta.includes("cuantos necesitas") ||
+                pregunta.includes("cuantas necesitas") ||
+                pregunta.includes("que cantidad") ||
+                pregunta.includes("cantidad necesitas") ||
+                pregunta.includes("cantidad deseas");
+
+            const respuestaCantidad =
+                /\b\d{1,3}\b/.test(respuesta) ||
+                new RegExp(`\\b${numeroPalabra}\\b`, "i").test(respuesta);
+
+            const pareceMedida = /\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|milimetros?|centimetros?|metros?)\b/i.test(respuesta);
+
+            if (preguntaCantidad && respuestaCantidad && !pareceMedida) {
+                estado.cantidad = true;
+                break;
+            }
+        }
+    }
+
     // ======================================
     // TAMAÑO / MEDIDAS
     // ======================================
 
     estado.tamaño = mensajesUsuario.some(mensaje => {
-        const medidaConUnidad = /\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?)\b/i.test(mensaje);
+        const medidaConUnidad = /\b\d+(?:[.,]\d+)?\s*(?:mm|cm|m|milimetros?|centimetros?|metros?)\b/i.test(mensaje);
         const medidaMultiplicada = /\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\b/i.test(mensaje);
         return medidaConUnidad || medidaMultiplicada;
     });
