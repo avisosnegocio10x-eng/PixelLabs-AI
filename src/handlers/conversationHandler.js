@@ -25,6 +25,63 @@ const {
 const { generarResumen } = require("../sales/summaryManager");
 const { sendEmail } = require("../email/emailManager");
 
+function crearPromptDinamico(faltantes) {
+    if (!faltantes || faltantes.length === 0) {
+        return systemPrompt;
+    }
+
+    return `${systemPrompt}
+
+------------------------------------------------------------
+ESTADO INTERNO DE LA COTIZACIÓN
+------------------------------------------------------------
+
+El sistema todavía considera pendientes estos campos:
+${faltantes.map(campo => `• ${campo}`).join("\n")}
+
+REGLAS OBLIGATORIAS PARA ESTA RESPUESTA:
+
+• NO pidas el nombre del cliente todavía.
+• NO digas que la cotización ya está completa.
+• NO digas que la solicitud ya fue registrada.
+• Pregunta únicamente por los datos que todavía faltan.
+• Si falta "cantidad", pregunta de forma directa cuántas unidades necesita.
+• Si falta "archivo", pregunta si cuenta o no con archivo STL.
+• Si falta "imagen", pide una imagen o foto de referencia.
+• Si falta "color", pregunta qué color desea.
+• Si falta "tamaño", pregunta las medidas.
+• Si falta "producto", pregunta qué producto o pieza desea cotizar.
+• Mantén la respuesta corta y clara.
+`;
+}
+
+async function enviarCorreoCotizacion(senderId, conversation) {
+    const resumen = generarResumen(conversation, senderId);
+
+    console.log("");
+    console.log("===================================");
+    console.log("CLIENTE LISTO PARA COTIZAR");
+    console.log("===================================");
+    console.log(resumen);
+
+    const emailEnviado = await sendEmail(
+        "Nuevo cliente - PixelLabs",
+        resumen
+    );
+
+    if (emailEnviado) {
+        marcarCorreoEnviado(senderId);
+        console.log("📧 Correo confirmado y marcado como enviado.");
+        return true;
+    }
+
+    console.error(
+        "❌ El correo NO se marcó como enviado. Se podrá reintentar automáticamente."
+    );
+
+    return false;
+}
+
 const processConversation = async ({ senderId, userMessage, plataforma }) => {
     console.log("");
     console.log("===================================");
@@ -35,7 +92,7 @@ const processConversation = async ({ senderId, userMessage, plataforma }) => {
     console.log("Mensaje:", userMessage);
 
     // ======================================
-    // VALIDAR SI ESTAMOS ESPERANDO EL NOMBRE
+    // SI ESTAMOS ESPERANDO EL NOMBRE
     // ======================================
 
     if (estaEsperandoNombre(senderId)) {
@@ -58,33 +115,27 @@ const processConversation = async ({ senderId, userMessage, plataforma }) => {
         setEsperandoNombre(senderId, false);
 
         const conversation = getConversation(senderId);
-        const resumen = generarResumen(conversation, senderId);
 
         console.log("");
         console.log("===================================");
         console.log("CLIENTE REGISTRADO");
         console.log("===================================");
-        console.log(resumen);
 
-        const emailEnviado = await sendEmail(
-            "Nuevo cliente - PixelLabs",
-            resumen
-        );
+        const emailEnviado = await enviarCorreoCotizacion(senderId, conversation);
 
         if (emailEnviado) {
-            marcarCorreoEnviado(senderId);
-            console.log("📧 Correo confirmado y marcado como enviado.");
+            await sendMessage(
+                plataforma,
+                senderId,
+                `¡Muchas gracias, ${userMessage}!\n\nHemos registrado correctamente tu solicitud.\n\nUn asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
+            );
         } else {
-            console.error(
-                "❌ El correo NO se marcó como enviado. Se podrá reintentar en el siguiente mensaje del cliente."
+            await sendMessage(
+                plataforma,
+                senderId,
+                "Gracias. Tu solicitud quedó registrada, pero tuvimos un inconveniente interno al enviar la notificación. La información no se perdió y el sistema volverá a intentarlo."
             );
         }
-
-        await sendMessage(
-            plataforma,
-            senderId,
-            `¡Muchas gracias, ${userMessage}!\n\nHemos registrado correctamente tu solicitud.\n\nUn asesor de PixelLabs revisará tu proyecto y preparará tu cotización lo antes posible.`
-        );
 
         return;
     }
@@ -98,24 +149,11 @@ const processConversation = async ({ senderId, userMessage, plataforma }) => {
     const conversation = getConversation(senderId);
 
     // ======================================
-    // ANALIZAR ESTADO DE LA COTIZACIÓN
+    // ANALIZAR ESTADO REAL DE LA COTIZACIÓN
     // ======================================
 
     const estado = obtenerEstadoConversacion(conversation);
     const faltantes = obtenerCamposFaltantes(estado);
-
-    // ======================================
-    // CONSULTAR GEMINI
-    // ======================================
-
-    const aiResponse = await askGemini(conversation, systemPrompt);
-
-    addMessage(senderId, "assistant", aiResponse);
-    await sendMessage(plataforma, senderId, aiResponse);
-
-    // ======================================
-    // VERIFICAR SI LA COTIZACIÓN ESTÁ COMPLETA
-    // ======================================
 
     console.log("");
     console.log("===================================");
@@ -127,6 +165,10 @@ const processConversation = async ({ senderId, userMessage, plataforma }) => {
     console.log("Tiene nombre:", tieneNombre(senderId));
     console.log("===================================");
 
+    // ======================================
+    // SI YA ESTÁ COMPLETA, EL BACKEND TOMA EL CONTROL
+    // ======================================
+
     if (
         faltantes.length === 0 &&
         !correoYaEnviado(senderId)
@@ -134,42 +176,37 @@ const processConversation = async ({ senderId, userMessage, plataforma }) => {
         if (!tieneNombre(senderId)) {
             setEsperandoNombre(senderId, true);
 
+            const mensajeNombre =
+                "Perfecto, ya tengo toda la información necesaria para preparar tu cotización.\n\n¿A nombre de quién registramos esta solicitud?";
+
+            addMessage(senderId, "assistant", mensajeNombre);
+            await sendMessage(plataforma, senderId, mensajeNombre);
+
             console.log("");
             console.log("===================================");
             console.log("ESPERANDO NOMBRE DEL CLIENTE");
             console.log("===================================");
 
-            await sendMessage(
-                plataforma,
-                senderId,
-                "Perfecto, ya tengo la información necesaria para preparar tu cotización. Solo necesito el nombre de la persona o empresa con la que deseas registrarla."
-            );
-
             return;
         }
 
-        const resumen = generarResumen(conversation, senderId);
-
-        console.log("");
-        console.log("===================================");
-        console.log("CLIENTE LISTO PARA COTIZAR");
-        console.log("===================================");
-        console.log(resumen);
-
-        const emailEnviado = await sendEmail(
-            "Nuevo cliente - PixelLabs",
-            resumen
-        );
-
-        if (emailEnviado) {
-            marcarCorreoEnviado(senderId);
-            console.log("📧 Correo confirmado y marcado como enviado.");
-        } else {
-            console.error(
-                "❌ El correo NO se marcó como enviado. Se podrá reintentar automáticamente."
-            );
-        }
+        await enviarCorreoCotizacion(senderId, conversation);
+        return;
     }
+
+    // ======================================
+    // SI FALTAN DATOS, GEMINI SOLO PREGUNTA POR ESOS DATOS
+    // ======================================
+
+    const promptDinamico = crearPromptDinamico(faltantes);
+
+    const aiResponse = await askGemini(
+        conversation,
+        promptDinamico
+    );
+
+    addMessage(senderId, "assistant", aiResponse);
+    await sendMessage(plataforma, senderId, aiResponse);
 };
 
 module.exports = {
