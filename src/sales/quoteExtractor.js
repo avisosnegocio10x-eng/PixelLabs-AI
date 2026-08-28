@@ -1,105 +1,39 @@
 // ================================
-// PIXELLABS - QUOTE EXTRACTOR V3
+// PIXELLABS - QUOTE EXTRACTOR V4
 // ================================
 
 function extraerCotizacion(conversation) {
+    const mensajesUsuario = conversation
+        .filter(msg => msg.role === "user")
+        .map(msg => String(msg.message || ""));
 
-    // ======================================
-    // SOLO MENSAJES DEL CLIENTE
-    // ======================================
-
-    const mensajesUsuario = conversation.filter(
-
-        msg => msg.role === "user"
-
-    );
-
-    const texto = mensajesUsuario
-        .map(msg => msg.message)
-        .join(" ")
-        .toLowerCase();
+    const mensajesTexto = mensajesUsuario.map(mensaje => mensaje.toLowerCase().trim());
+    const texto = mensajesTexto.join("\n");
+    const contiene = frase => mensajesTexto.some(mensaje => mensaje.includes(frase));
 
     // ======================================
     // COLORES DISPONIBLES
     // ======================================
 
     const coloresDisponibles = [
-
-        "negro",
-        "blanco",
-
-        "gris",
-        "gris oscuro",
-        "gris claro",
-
-        "rosa",
-        "fucsia",
-
-        "turquesa",
-
-        "verde",
-        "verde brillante",
-        "verde bambú",
-        "verde militar",
-        "verde oliva",
-
-        "rojo",
-
-        "azul",
-        "azul marino",
-        "azul cielo",
-        "celeste",
-
-        "amarillo",
-
-        "naranja",
-
-        "morado",
-        "violeta",
-
-        "café",
-        "marrón",
-
-        "beige",
-        "crema",
-
-        "dorado",
-        "oro",
-
-        "plateado",
-        "plata",
-
-        "cobre",
-        "bronce",
-
-        "transparente"
-
+        "negro", "negra", "blanco", "blanca", "gris", "gris oscuro",
+        "gris oscura", "gris claro", "gris clara", "rosa", "rosado",
+        "rosada", "fucsia", "turquesa", "verde", "verde brillante",
+        "verde bambú", "verde militar", "verde oliva", "rojo", "azul",
+        "azul marino", "azul cielo", "celeste", "amarillo", "naranja",
+        "morado", "violeta", "café", "cafe", "marrón", "marron",
+        "beige", "crema", "dorado", "oro", "plateado", "plata",
+        "cobre", "bronce", "transparente"
     ];
-
-    // ======================================
-    // ÚLTIMO COLOR CONFIRMADO
-    // ======================================
 
     let ultimoColor = null;
 
-    mensajesUsuario.forEach(msg => {
-
-        const mensaje = msg.message.toLowerCase();
-
+    mensajesTexto.forEach(mensaje => {
         coloresDisponibles.forEach(color => {
-
             if (mensaje.includes(color)) {
-
-                ultimoColor =
-
-                    color.charAt(0).toUpperCase() +
-
-                    color.slice(1);
-
+                ultimoColor = color.charAt(0).toUpperCase() + color.slice(1);
             }
-
         });
-
     });
 
     // ======================================
@@ -107,39 +41,16 @@ function extraerCotizacion(conversation) {
     // ======================================
 
     const materiales = [
-
-        "pla silk",
-
-        "pla matte",
-
-        "pla",
-
-        "petg",
-
-        "abs",
-
-        "asa",
-
-        "tpu",
-
-        "resina",
-
-        "carbon fiber",
-
-        "wood"
-
+        "pla silk", "pla matte", "pla", "petg", "abs", "asa",
+        "tpu", "resina", "carbon fiber", "wood"
     ];
 
-   let material = "PLA";
+    let material = "PLA";
 
     materiales.forEach(item => {
-
         if (texto.includes(item)) {
-
             material = item.toUpperCase();
-
         }
-
     });
 
     // ======================================
@@ -147,113 +58,55 @@ function extraerCotizacion(conversation) {
     // ======================================
 
     const productos = [
-
-        "llavero",
-
-        "figura",
-
-        "maceta",
-
-        "organizador",
-
-        "soporte",
-
-        "porta celular",
-
-        "logo",
-
-        "letras",
-
-        "busto",
-
-        "casco",
-
-        "espada",
-
-        "katana",
-
-        "auto",
-
-        "carro",
-
-        "automóvil",
-
-        "camión",
-
-        "moto",
-
-        "avión",
-
-        "barco",
-
-        "juguete",
-
-        "prototipo",
-
-        "pieza",
-
-        "engranaje",
-
-        "decoración"
-
+        "llavero", "figura", "maceta", "organizador", "soporte",
+        "porta celular", "portacelular", "logo", "letras", "letrero",
+        "busto", "casco", "espada", "katana", "auto", "carro",
+        "automóvil", "camión", "moto", "avión", "barco", "juguete",
+        "prototipo", "pieza", "repuesto", "tapa", "base", "placa",
+        "engranaje", "decoración", "caja", "rompecabezas", "rompecabeza",
+        "modelo", "miniatura", "trofeo", "fidget", "dragón", "dragon",
+        "dinosaurio"
     ];
 
     let producto = "No especificado";
 
     productos.forEach(item => {
-
         if (texto.includes(item)) {
-
-            producto =
-
-                item.charAt(0).toUpperCase() +
-
-                item.slice(1);
-
+            producto = item.charAt(0).toUpperCase() + item.slice(1);
         }
-
     });
-        // ======================================
+
+    // ======================================
     // STL
     // ======================================
 
+    const noTieneSTL =
+        contiene("no tengo archivo stl") ||
+        contiene("no tengo stl") ||
+        contiene("no cuento con archivo stl") ||
+        contiene("no cuento con stl") ||
+        contiene("sin archivo stl") ||
+        contiene("sin stl") ||
+        contiene("únicamente tengo una imagen") ||
+        contiene("unicamente tengo una imagen") ||
+        contiene("solo tengo una imagen") ||
+        contiene("solo cuento con una imagen");
+
     let stl = "No";
 
-    // Primero buscamos frases negativas
-
-    if (
-
-        texto.includes("no tengo archivo stl") ||
-        texto.includes("no tengo stl") ||
-        texto.includes("no cuento con archivo stl") ||
-        texto.includes("no cuento con stl") ||
-        texto.includes("sin archivo stl") ||
-        texto.includes("sin stl") ||
-        texto.includes("únicamente tengo una imagen") ||
-        texto.includes("unicamente tengo una imagen") ||
-        texto.includes("solo tengo una imagen") ||
-        texto.includes("solo cuento con una imagen")
-
-    ) {
-
-        stl = "No";
-
-    }
-
-    // Solo si NO encontramos una frase negativa,
-    // buscamos si sí tiene STL.
-
-    else if (
-
-        texto.includes("tengo archivo stl") ||
-        texto.includes("tengo stl") ||
-        texto.includes("cuento con archivo stl") ||
-        texto.includes("cuento con stl")
-
-    ) {
-
+    if (!noTieneSTL && (
+        contiene("tengo archivo stl") ||
+        contiene("tengo stl") ||
+        contiene("cuento con archivo stl") ||
+        contiene("cuento con stl") ||
+        contiene("adjunto el stl") ||
+        contiene("adjunto stl") ||
+        contiene("te envío el stl") ||
+        contiene("te envio el stl") ||
+        contiene("aquí está el stl") ||
+        contiene("aqui esta el stl")
+    )) {
         stl = "Sí";
-
     }
 
     // ======================================
@@ -261,14 +114,12 @@ function extraerCotizacion(conversation) {
     // ======================================
 
     const imagen =
-
-        texto.includes("imagen") ||
-        texto.includes("foto") ||
-        texto.includes("fotografía") ||
-        texto.includes("fotografia")
-
+        contiene("[imagen]") ||
+        contiene("imagen") ||
+        contiene("foto") ||
+        contiene("fotografía") ||
+        contiene("fotografia")
             ? "Sí"
-
             : "No";
 
     // ======================================
@@ -277,107 +128,127 @@ function extraerCotizacion(conversation) {
 
     let cantidad = "No especificada";
 
-    const numeroCantidad = texto.match(
-
-        /\b(\d+)\s*(unidad|unidades|pieza|piezas|figura|figuras|llavero|llaveros)/i
-
-    );
-
-    if (numeroCantidad) {
-
-        cantidad = numeroCantidad[1];
-
-    }
-
-    else if (
-
-        texto.includes("una unidad") ||
-        texto.includes("un llavero") ||
-        texto.includes("una figura") ||
-        texto.includes("una pieza") ||
-        texto.includes("solo una") ||
-        texto.includes("solamente una") ||
-        texto.includes("solo necesito una") ||
-        texto.includes("únicamente una")
-
-    ) {
-
-        cantidad = "1";
-
-    }
-
-   // ======================================
-// MEDIDAS
-// ======================================
-
-let medidas = "No especificadas";
-
-// Detecta medidas como: 10 cm x 5 cm
-
-let medidasMatch = texto.match(
-
-    /(\d+)\s*cm.*?(\d+)\s*cm/i
-
-);
-
-if (medidasMatch) {
-
-    medidas =
-        `${medidasMatch[1]} cm x ${medidasMatch[2]} cm`;
-
-}
-
-// Detecta medidas como: 6 cm
-
-else {
-
-    medidasMatch = texto.match(
-
-        /(\d+(?:\.\d+)?)\s*cm\b/i
-
-    );
-
-    if (medidasMatch) {
-
-        medidas = `${medidasMatch[1]} cm`;
-
-    }
-
-}
-        // ======================================
-    // RESULTADO
-    // ======================================
-
-    return {
-
-        producto,
-
-        color:
-
-            ultimoColor ||
-
-            "No especificado",
-
-        material,
-
-        cantidad,
-
-        medidas,
-
-        imagen,
-
-        stl
-
+    const numerosPalabra = {
+        uno: "1",
+        una: "1",
+        dos: "2",
+        tres: "3",
+        cuatro: "4",
+        cinco: "5",
+        seis: "6",
+        siete: "7",
+        ocho: "8",
+        nueve: "9",
+        diez: "10"
     };
 
+    const palabraNumero = "(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)";
+
+    for (let i = mensajesTexto.length - 1; i >= 0; i--) {
+        const mensaje = mensajesTexto[i]
+            .replace(/[.!?,;:]+$/g, "")
+            .trim();
+
+        let match = mensaje.match(
+            /\b(\d+)\s*(?:unidad(?:es)?|pieza(?:s)?|llavero(?:s)?|figura(?:s)?|producto(?:s)?|caja(?:s)?|impresi[oó]n(?:es)?|ejemplar(?:es)?)\b/i
+        );
+
+        if (match) {
+            cantidad = match[1];
+            break;
+        }
+
+        match = mensaje.match(
+            /\b(?:cantidad(?:\s+de)?|solo\s+necesito|solamente\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\s*(?:de\s*)?(\d+)\b(?!\s*(?:mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?))/i
+        );
+
+        if (match) {
+            cantidad = match[1];
+            break;
+        }
+
+        match = mensaje.match(/\b(\d+)\s*(?:nada\s+m[aá]s|nom[aá]s|solamente|solo)\b/i);
+
+        if (match) {
+            cantidad = match[1];
+            break;
+        }
+
+        if (/^(?:cantidad\s*:?[ ]*)?\d{1,3}$/.test(mensaje)) {
+            cantidad = mensaje.match(/\d+/)[0];
+            break;
+        }
+
+        match = mensaje.match(
+            new RegExp(`\\b(?:cantidad(?:\\s+de)?|solo\\s+necesito|solamente\\s+necesito|necesito|quiero|ser[ií]a|ser[ií]an|ser[aá]n|son|solo|solamente)\\s*(?:de\\s*)?${palabraNumero}\\b`, "i")
+        );
+
+        if (match) {
+            cantidad = numerosPalabra[match[1].toLowerCase()] || "1";
+            break;
+        }
+
+        match = mensaje.match(new RegExp(`^(?:solo\\s+|solamente\\s+)?${palabraNumero}$`, "i"));
+
+        if (match) {
+            cantidad = numerosPalabra[match[1].toLowerCase()];
+            break;
+        }
+
+        if (/\b(?:un|una)\s+(?:unidad|pieza|llavero|figura|maceta|organizador|soporte|carro|auto|modelo|caja|logo|letrero|trofeo|repuesto|casco|moto|juguete|prototipo)\b/i.test(mensaje)) {
+            cantidad = "1";
+            break;
+        }
+    }
+
+    // ======================================
+    // MEDIDAS
+    // ======================================
+
+    let medidas = "No especificadas";
+
+    for (const mensaje of mensajesTexto) {
+        let match = mensaje.match(
+            /(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros?).*?(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros?)/i
+        );
+
+        if (match) {
+            medidas = `${match[1]} cm x ${match[2]} cm`;
+            break;
+        }
+
+        match = mensaje.match(
+            /(\d+(?:[.,]\d+)?)\s*(mm|cm|m|mil[ií]metros?|cent[ií]metros?|metros?)\b/i
+        );
+
+        if (match) {
+            medidas = `${match[1]} ${match[2]}`;
+            break;
+        }
+
+        match = mensaje.match(
+            /(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)(?:\s*[x×]\s*(\d+(?:[.,]\d+)?))?/i
+        );
+
+        if (match) {
+            medidas = match[3]
+                ? `${match[1]} x ${match[2]} x ${match[3]}`
+                : `${match[1]} x ${match[2]}`;
+            break;
+        }
+    }
+
+    return {
+        producto,
+        color: ultimoColor || "No especificado",
+        material,
+        cantidad,
+        medidas,
+        imagen,
+        stl
+    };
 }
 
-// ======================================
-// EXPORTAR
-// ======================================
-
 module.exports = {
-
     extraerCotizacion
-
 };
