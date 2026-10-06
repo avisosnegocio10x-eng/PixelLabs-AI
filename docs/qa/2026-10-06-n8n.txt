@@ -1,0 +1,18 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pixellabs-ai@1.0.0 test:n8n:runtime
+> node n8n/local/runtimeSmokeTest.js
+
+OK: PixelLabs 01 - Investigación diaria
+OK: PixelLabs 02 - Plan editorial
+OK: PixelLabs 03 - Generación de publicaciones
+OK: PixelLabs 04 - Procesamiento de video
+OK: PixelLabs 05 - Edición de clips
+OK: PixelLabs 06 - Revisión múltiple
+OK: PixelLabs 07 - Corrección
+OK: PixelLabs 08 - Aprobación
+OK: PixelLabs 09 - Programación y publicación
+OK: PixelLabs 10 - Métricas
+OK: PixelLabs 11 - Optimización semanal
+OK: PixelLabs 12 - Errores
+{"n8nVersion":"2.33.7","workflows":12,"active":0,"completed":10,"localWorkerQueued":2,"aiRequests":0,"externalSocialRequests":0}

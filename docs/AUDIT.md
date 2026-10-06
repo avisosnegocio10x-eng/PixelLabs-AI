@@ -31,3 +31,9 @@
 - Radar, calendario, corrección segura y métricas dejaron de ser handlers simulados.
 - Los 12 flujos n8n conservan payload, encolan con idempotencia, esperan y consultan el resultado; siguen inactivos.
 - Sigue pendiente configurar el backend desplegado con variables de Supabase, autorizar n8n y completar OAuth social.
+
+## Continuación — 2026-10-06
+
+Se retomó el checkout limpio de `dfdda1f`, sin recrear Content Engine, chatbot, worker ni workflows. Baseline 86 tests; resultado 102/102. Generación Gemini Free Tier, aprobación manual obligatoria, previews/uploads de fotos, corrección con historial, scheduler dry-run y OAuth oficial preparados. Los 12 workflows pasaron en n8n Community 2.33.7 aislado e inactivo.
+
+Los registros de Supabase/Render de agosto son históricos: las consultas SQL actuales agotaron timeout y no se confirmó la configuración efectiva remota. Organización Supabase Free verificada por metadatos; nueva migración probada localmente, no aplicada al proyecto real. No se habilitó billing, publicación pública ni auto-publicación. [Estado completo y siguiente paso por fase](CONTENT_ENGINE_PHASES.md).

@@ -1,7 +1,6 @@
 # APIs sociales
 
-Verificación realizada el 10 de agosto de 2026 contra documentación oficial.
-Ninguna publicación real ni solicitud externa está habilitada.
+Actualización 2026-10-06 sobre los adaptadores existentes. Publicación real deshabilitada. OAuth es un permiso independiente, apagado por defecto; su conexión real está pendiente.
 
 ## TikTok
 
@@ -14,7 +13,7 @@ Fuente oficial: https://developers.tiktok.com/doc/content-posting-api-get-starte
 
 ## Instagram
 
-La Content Publishing API de Meta admite imágenes, videos, Reels, Stories y carruseles para cuentas profesionales compatibles. Se necesita app, cuenta profesional, permisos, token y una URL pública del archivo. Meta documenta un límite móvil de 100 publicaciones API por 24 horas para Instagram; los carruseles cuentan como una.
+Se seleccionó **Instagram API with Facebook Login**, porque el proyecto ya usa Graph API, Messenger y una Página. La cuenta Business/Creator debe estar vinculada a esa Página. Se preparan imágenes, carruseles de 2–10 elementos y Reels; Stories permanecen pospuestas hasta verificar soporte real. La API requiere medios HTTPS accesibles y controlados.
 
 Fuentes oficiales:
 
@@ -46,4 +45,16 @@ inalcanzables en Render.
 - `GET /admin/api/content-engine/social/capabilities` informa requisitos sin exponer secretos.
 - `POST /admin/api/content-engine/content/:id/export/:platform` crea una variante `DRAFT` solo si el contenido fue aprobado y el producto sigue disponible.
 - Los clientes oficiales están en `src/contentEngine/social/officialApiClients.js` y todavía no son llamados por rutas públicas.
-- Los tokens se almacenarán cifrados; no se guardarán dentro de los JSON de n8n.
+- Los tokens se almacenan con AES-256-GCM en `social_account_tokens`; no se guardan en JSON de n8n ni se devuelven al frontend.
+
+## OAuth preparado
+
+`POST /admin/api/content-engine/social/oauth/:provider/start` (`meta`/`tiktok`) requiere `SOCIAL_OAUTH_ENABLED=true` y clave de cifrado válida. Callbacks: `/social/oauth/meta/callback` y `/social/oauth/tiktok/callback`. Estado firmado de un uso y duración 10 minutos; persistencia antes de intercambiar tokens.
+
+Meta solicita `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish`. Comprueba la Página configurada y obtiene el Instagram vinculado. No sobrescribe `PAGE_ACCESS_TOKEN` del chatbot. La expiración/renovación real de Meta debe verificarse antes de operación diaria.
+
+TikTok empieza con `user.info.basic`, `video.upload`, `video.list`; almacena access/refresh token, expiraciones y `open_id`. La renovación está implementada y probada con mocks, sin scheduler de renovación real. No solicita `video.publish` inicialmente. Direct Post exige auditoría, privacidad compatible y consentimiento; no es accesible desde el calendario de simulación. El upload a borrador exige terminar dentro de TikTok.
+
+`PULL_FROM_URL` exige HTTPS y `TIKTOK_VERIFIED_MEDIA_URL_PREFIX` verificado con TikTok. `FILE_UPLOAD` tiene transporte oficial preparado. Facebook Reels usa `rupload.facebook.com`; los clientes sanitizan errores y no siguen redirecciones con tokens. Instagram conserva creación y publicación del contenedor como pasos separados.
+
+TikTok tiene consulta Display API con `video.list` preparada. La sincronización autónoma Meta/Instagram y la conexión de estos clientes al scheduler real siguen pendientes. Tests con respuestas simuladas no equivalen a apps registradas o permisos aprobados. [Credenciales exactas](docs/CONTENT_ENGINE_CREDENTIALS.md).

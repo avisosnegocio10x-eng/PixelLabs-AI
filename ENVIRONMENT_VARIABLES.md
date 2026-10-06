@@ -1,6 +1,6 @@
 # Variables de entorno
 
-Usa `.env.example` como referencia.
+Usa `.env.example` como referencia. [Lista exacta por proveedor](docs/CONTENT_ENGINE_CREDENTIALS.md).
 
 ## Obligatorias
 
@@ -33,7 +33,7 @@ Usa `.env.example` como referencia.
 
 - `SOCIAL_PUBLISH_MODE`: debe permanecer `draft`.
 - `SOCIAL_EXTERNAL_REQUESTS_ENABLED`: debe permanecer `false`.
-- `SOCIAL_TOKEN_ENCRYPTION_KEY`: secreto base64 de 32 bytes; Render lo genera.
+- `SOCIAL_TOKEN_ENCRYPTION_KEY`: base64 de exactamente 32 bytes. Configurar de forma segura: el generador genérico de Render no garantiza ese formato; el Blueprint Free usa `sync:false`.
 - `PIXELLABS_API_URL`: URL pública del backend para n8n.
 - `PIXELLABS_N8N_API_TOKEN`: copia de `N8N_WEBHOOK_SECRET`, configurada dentro de
   n8n y nunca exportada en JSON. No usar el token administrativo.
@@ -43,3 +43,7 @@ Usa `.env.example` como referencia.
   distintos. En producción, el secreto de n8n debe tener al menos 32 caracteres.
 
 `CONTENT_ENGINE_AUTO_PUBLISH` no sustituye la configuración de base de datos ni las barreras; la publicación continúa apagada hasta aprobación explícita.
+
+`AUTO_PUBLICATION=false` es un alias de seguridad; cualquier bandera automática activa se rechaza. `SOCIAL_OAUTH_ENABLED=false` bloquea conexión de cuentas, independientemente de la publicación.
+
+`CONTENT_ENGINE_AI_ENABLED=false`, `CONTENT_ENGINE_GEMINI_FREE_TIER_CONFIRMED=false`, `CONTENT_ENGINE_GEMINI_MODEL=gemini-3.5-flash-lite`, `CONTENT_ENGINE_GEMINI_MAX_REQUESTS_PER_DAY=12` controlan IA editorial sin cambiar el modelo del chatbot. `SUPABASE_ANON_KEY` es compatible y opcional: el backend actual no la necesita.

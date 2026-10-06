@@ -6,6 +6,8 @@ Backend de PixelLabs para atención por Messenger, Instagram y WhatsApp, cotizac
 
 La rama `agent/pixellabs-content-engine` incluye una base ejecutable conectada a Supabase:
 
+Actualización 2026-10-06: preparación diaria Gemini limitada al Free Tier, fotos/previews, revisión/corrección con historial, aprobación manual y calendario **en simulación**. [Estado por fases](docs/CONTENT_ENGINE_PHASES.md) · [Credenciales exactas](docs/CONTENT_ENGINE_CREDENTIALS.md).
+
 - Centro de Contenido protegido por token administrativo.
 - Configuración editable de publicaciones, historias y reels diarios.
 - Aprobación manual por defecto e interruptor global de emergencia.
@@ -37,9 +39,7 @@ La rama `agent/pixellabs-content-engine` incluye una base ejecutable conectada a
 
 Todavía no se publican contenidos reales. `SOCIAL_PUBLISH_MODE=draft`, las
 llamadas sociales externas están bloqueadas, la aprobación es manual y los
-flujos n8n están desactivados. Render ya tiene Supabase configurado; OAuth y la
-aprobación de las apps de Meta/TikTok siguen siendo bloqueos externos
-deliberados.
+flujos n8n están desactivados. El registro previo indica que Render tenía Supabase configurado; la conectividad actual no pudo revalidarse. Nueva migración, OAuth real y permisos Meta/TikTok siguen pendientes. No se desplegó ni se publicó contenido real en esta sesión.
 
 ## Inicio local
 

@@ -7,6 +7,7 @@ Las migraciones están en:
 - `database/migrations/003_security_and_fk_indexes.sql`: endurecimiento de funciones/RLS y cobertura de todas las claves foráneas.
 - `database/migrations/004_editorial_calendar.sql`: fecha, plataforma, idempotencia y restricciones del plan editorial.
 - `database/migrations/005_admin_rls_hardening.sql`: función administrativa sin privilegios elevados y políticas RLS optimizadas.
+- `database/migrations/20261006000920_content_pipeline.sql`: cuotas Gemini, calendario de simulación, leases, aprobación/idempotencia, impresiones y marca de simulación; creada con `supabase migration new`.
 
 Incluye las 30 entidades solicitadas: configuración, cuentas sociales, tendencias y puntuaciones, catálogo, medios, campañas, ideas, contenidos y variantes, ocho revisiones, correcciones, calendario, intentos, publicaciones, métricas, atribución, videos, segmentos, transcripciones, momentos, clips, versiones, errores y auditoría.
 
@@ -30,9 +31,19 @@ Incluye las 30 entidades solicitadas: configuración, cuentas sociales, tendenci
 
 ## Aplicar
 
-Ejecuta `001`, `002`, `003`, `004` y `005` en ese orden mediante migraciones de Supabase. Después ejecuta `npm run verify:supabase` desde un entorno que ya tenga las variables configuradas. No pegues la service-role en el chat ni en el frontend.
+En una instalación nueva, aplica `001` → `002` → `003` → `004` → `005` → `20261006000920_content_pipeline.sql`. En el proyecto existente, revisa primero historial/esquema: no reapliques a ciegas las cinco originales. Si ya están registradas, aplica solo la nueva. Después ejecuta `npm run verify:supabase` con las claves en el entorno seguro. No pegues service-role en chat/frontend.
+
+La nueva migración es transaccional e idempotente. Añade `content_ai_usage` con RLS y sin permisos anon/authenticated; cuatro RPC `SECURITY INVOKER`, `search_path` fijo y ejecución solo por service-role. Locks/`SKIP LOCKED` protegen cuota, límites y consumo concurrente. No habilita publicación ni recursos pagados.
+
+## Comprobación actual — 2026-10-06
+
+Metadatos del proyecto `xhihiclbhzoyurvfxyce`: `ACTIVE_HEALTHY`; organización **Free**. Las consultas SQL, tablas e historial agotaron su timeout. No se aplicó la nueva migración ni se confirmó el esquema remoto actual.
+
+Las seis migraciones pasaron sobre PostgreSQL PGlite, con reaplicación de la nueva, RLS/permisos, cuotas, aprobación, límites, leases, idempotencia y rechazo al cambiar privacidad del medio. El harness simula `auth`/`storage` y omite instalación de `pgcrypto`: no sustituye validar Supabase real.
 
 ## Verificación real del 10 de agosto de 2026
+
+Registro histórico conservado; no revalidado en la sesión actual.
 
 - 5 migraciones registradas.
 - 36 tablas públicas y RLS habilitado en todas.

@@ -1,0 +1,131 @@
+{
+  "dateUTC": "2026-10-06",
+  "branch": "agent/pixellabs-content-engine",
+  "baselineCommit": "dfdda1fc55689badc98d828fbac25ae009545af6",
+  "node": "v24.19.0",
+  "tests": {
+    "command": "npm run check",
+    "baseline": 86,
+    "final": 102,
+    "failed": 0,
+    "skipped": 0
+  },
+  "database": {
+    "harness": "PGlite PostgreSQL with mocked auth/storage schemas",
+    "migrations": 6,
+    "newMigrationApplications": 2,
+    "publicTables": 37,
+    "rlsTables": 37,
+    "remoteMigrationApplied": false
+  },
+  "n8n": {
+    "n8nVersion": "2.33.7",
+    "workflows": [
+      {
+        "file": "01-daily-trend-research.json",
+        "name": "PixelLabs 01 - Investigación diaria",
+        "active": false,
+        "sha256": "750dde9462f29e4862b5fed2d58563a0a48891d88eb1d54e1937475bd18e61d6"
+      },
+      {
+        "file": "02-editorial-plan.json",
+        "name": "PixelLabs 02 - Plan editorial",
+        "active": false,
+        "sha256": "01047cbf99e2da8c069d921c5f918c1331e211bdbddf94f4d0569591e714e45a"
+      },
+      {
+        "file": "03-content-generation.json",
+        "name": "PixelLabs 03 - Generación de publicaciones",
+        "active": false,
+        "sha256": "a5680f7e4c00ba2f1c0a94b8f36bc482fa5cdaacf096176d00718fac91e2d214"
+      },
+      {
+        "file": "04-video-processing.json",
+        "name": "PixelLabs 04 - Procesamiento de video",
+        "active": false,
+        "sha256": "34b8b5651548f11b0ca8f3e11365a200c99c4ee6a05f3db9990ecb111c6be011"
+      },
+      {
+        "file": "05-clip-editing.json",
+        "name": "PixelLabs 05 - Edición de clips",
+        "active": false,
+        "sha256": "be3e1c463bb22bafa3fd47f96d8a23a1630eca836b80a0100bfa03454bba9d2f"
+      },
+      {
+        "file": "06-multi-review.json",
+        "name": "PixelLabs 06 - Revisión múltiple",
+        "active": false,
+        "sha256": "bcf1c800fd3ec2eba1c1ce2d049cab804c09fd73e9fdc713e0df58dd092524ee"
+      },
+      {
+        "file": "07-content-correction.json",
+        "name": "PixelLabs 07 - Corrección",
+        "active": false,
+        "sha256": "20ea11c0c48bb574f89d005e49e80519adfaf396c87bf848bcc203df62258b94"
+      },
+      {
+        "file": "08-approval-routing.json",
+        "name": "PixelLabs 08 - Aprobación",
+        "active": false,
+        "sha256": "6f965adfa345f9d952efb4725037c386aaabfc0a50939d02d33639c32714edf7"
+      },
+      {
+        "file": "09-schedule-publish.json",
+        "name": "PixelLabs 09 - Programación y publicación",
+        "active": false,
+        "sha256": "c997085c769033c3c43c32bf045e26120e7ee2184844ac6772ac4df5b1548e15"
+      },
+      {
+        "file": "10-metrics-sync.json",
+        "name": "PixelLabs 10 - Métricas",
+        "active": false,
+        "sha256": "8b9acd52044f9bde0b51c10563a66e39eaa35cfcb0e9798910ac606cf0dc57f3"
+      },
+      {
+        "file": "11-weekly-optimization.json",
+        "name": "PixelLabs 11 - Optimización semanal",
+        "active": false,
+        "sha256": "41cbfac8e484131f902e71cf2fba0e1019d2fb5d94aa6c06e8ae6c6b50c0091a"
+      },
+      {
+        "file": "12-error-recovery.json",
+        "name": "PixelLabs 12 - Errores",
+        "active": false,
+        "sha256": "d44d9feaddc705341773230e3cd90c2a12d8282ec7885724d6b70106d00cc9e1"
+      }
+    ],
+    "active": 0,
+    "completed": 10,
+    "localWorkerQueued": 2,
+    "aiRequests": 0,
+    "externalSocialRequests": 0
+  },
+  "panel": {
+    "mode": "DOM and real local HTTP; no browser rendering",
+    "login": true,
+    "preview": true,
+    "manualApproval": true,
+    "scheduling": true,
+    "editingInvalidatesApproval": true,
+    "activeDays": 7,
+    "automaticPublishingLocked": true,
+    "oauthDisabled": true,
+    "externalSocialRequests": 0
+  },
+  "realConnections": {
+    "supabaseMetadata": "ACTIVE_HEALTHY",
+    "supabaseOrganizationPlan": "free",
+    "databaseReads": "timeout",
+    "renderDashboardVerified": false,
+    "metaOAuth": false,
+    "tiktokOAuth": false,
+    "geminiRequests": 0
+  },
+  "safety": {
+    "autoPublication": false,
+    "publicQAPosts": 0,
+    "paidServicesActivated": 0,
+    "realSocialRequests": 0
+  },
+  "costUSD": 0
+}

@@ -14,14 +14,14 @@ sin publicar el workflow ni modificar su horario.
 | # | Workflow | Disparador preparado | Función real | Datos o conexiones requeridos |
 |---:|---|---|---|---|
 | 1 | Investigación diaria | Diario, 06:00 | Ingresa observaciones autorizadas, deduplica y puntúa tendencias | `trend_sources`, `trends`, `trend_scores`, ajustes y catálogo |
-| 2 | Plan editorial | Manual | Crea propuestas sin choques de minuto ni publicación | Tendencias, catálogo, `content_ideas`, campañas y ajustes |
-| 3 | Generación | Manual | Verifica producto, colores, material, precio y prepara un concepto | Catálogo; proveedor de modelo pendiente y siempre revisado |
+| 2 | Plan editorial | Diario, 06:10 | Crea/reutiliza propuestas, respetando cantidades y formatos | Tendencias, catálogo, `content_ideas`, campañas y ajustes |
+| 3 | Generación | Diario, 06:20 | Preparación diaria Gemini y espera humana | Catálogo, medios, Gemini Free Tier confirmado |
 | 4 | Procesamiento de video | Manual | Encola el video para el agente local | `workflow_jobs`, videos y worker local; no FFmpeg en Render |
 | 5 | Edición de clips | Manual | Encola un render para el agente local | Biblioteca de clips, versiones y worker local |
-| 6 | Revisión múltiple | Manual | Guarda ocho revisiones y calcula decisión segura | Contenido, catálogo, `content_reviews` y ajustes |
-| 7 | Corrección | Manual | Aplica solo correcciones deterministas de bajo riesgo | Contenido, revisiones y `content_corrections` |
-| 8 | Aprobación | Manual | Comprueba si el contenido puede pasar a decisión humana | Biblioteca de contenido y revisiones; no aprueba solo |
-| 9 | Programación/publicación | Cada 5 minutos | Comprueba el plan, pero bloquea toda publicación real | Ajustes, calendario; `autoPublish=false` y conectores externos bloqueados |
+| 6 | Revisión múltiple | Diario, 06:30 | Revisa borradores nuevos en lote, ocho categorías | Contenido, catálogo, Gemini y ajustes |
+| 7 | Corrección | Diario, 06:40 | Corrección segura en lote, preservando historial | Contenido, revisiones y `content_corrections` |
+| 8 | Aprobación | Diario, 06:50 | Lista piezas para decisión humana; nunca aprueba | Biblioteca y revisiones |
+| 9 | Programación/publicación | Cada 5 minutos | Consume solo simulaciones aprobadas | Calendario, nueva migración; cero solicitudes sociales |
 | 10 | Métricas | Cada 6 horas | Guarda métricas propias/oficiales y genera resumen | `published_content`, `social_metrics`; cuentas oficiales pendientes |
 | 11 | Optimización semanal | Lunes, 07:00 | Recomienda usando métricas, CRM, catálogo y biblioteca | Métricas, CRM, catálogo y contenido; no cambia ajustes automáticamente |
 | 12 | Recuperación de errores | Cada 15 minutos | Lista fallos persistentes para revisión segura | `workflow_jobs`, `audit_logs`, `content_errors`; no reintenta publicación |
@@ -51,7 +51,7 @@ estado `QUEUED` o `RUNNING` es seguimiento válido, no una publicación ni un
 resultado final. Los trabajos ligeros tienen hasta tres intentos persistentes
 con retroceso exponencial; video y clips quedan bajo el arrendamiento del worker
 local. `audit_logs` registra cada transición y `content_errors` conserva los
-fallos finales o reintentables con contexto no sensible.
+fallos finales o reintentables con contexto no sensible. Los trabajos ligeros repiten espera/consulta hasta terminar. `FAILED` produce error explícito en n8n. Los de video salen del polling al asignarse a `local-video`; consultar su resultado en worker/panel.
 
 La instalación local guarda ejecuciones siete días y conserva progreso. Los 12
 flujos deben seguir **Inactive** hasta importar, configurar y probar cada uno
@@ -60,24 +60,22 @@ hasta autorización expresa para otra fase.
 
 ## Validación
 
-Auditoría ejecutada el 10 de agosto de 2026 con n8n Community `2.33.7` real:
+Auditoría actual del 6 de octubre de 2026 con n8n Community `2.33.7` real, aislada:
 
 - importación y reexportación: 12/12 JSON válidos y 12/12 inactivos;
 - ejecución controlada: 12/12 workflows completaron su recorrido n8n;
 - backend aislado: 10 trabajos ligeros completados y 2 trabajos de video
   conservados en `QUEUED` para el worker local;
-- seguridad: cero solicitudes sociales y publicación bloqueada por
-  `AUTO_PUBLISH_DISABLED`;
-- Supabase: escritura/lectura transaccional de 11 tablas conectadas, RLS
-  verificado y rollback confirmado sin dejar fixtures.
+- seguridad: cero solicitudes IA/sociales, OAuth apagado y workflow 09 en dry-run;
+- conexión real PC → Render → Supabase pendiente; no se modificó la instancia del usuario.
 
-Los POST usan el cuerpo JSON nativo de n8n. El modo `Raw` no debe sustituirlo:
-la prueba de runtime de `2.33.7` confirmó que esa configuración puede emitir un
-cuerpo vacío aunque el JSON parezca válido al importarlo.
+Los POST usan `specifyBody=json`, `JSON.stringify` y `Object.assign`. Runtime confirmó que keypair convierte payloads compuestos a texto y el evaluador de esta versión no resuelve object spread; la importación por sí sola no detecta esos fallos.
 
 ```bash
 npm run build:n8n
 npm run validate:n8n
+# CLI Community 2.33.7 instalado, prueba aislada sin activar:
+npm run test:n8n:runtime
 ```
 
 La prueba oficial de importación usa:
@@ -96,3 +94,5 @@ de importar sin activar, ejecuta una comprobación de solo lectura contra
 dedicado, HTTPS, catálogo, CRM, radar, calendario, biblioteca, revisiones,
 clips, cola, auditoría, base de datos y Storage privado sin exponer la
 `service_role` ni generar trabajos de prueba persistentes.
+
+Activación posterior: 01 → 02 → 03 → 06 → 07 → 08 verificando cada resultado. 04/05 solo con worker validado en el PC. Después 09/10/11/12 con calendario/conexiones probados, sin cambiar payloads seguros para publicar. Los triggers usan `America/El_Salvador`; ajustar también n8n si se cambia la zona del motor.

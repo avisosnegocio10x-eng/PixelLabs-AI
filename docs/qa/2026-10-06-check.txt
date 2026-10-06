@@ -1,0 +1,156 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pixellabs-ai@1.0.0 check
+> node --check server.js && node --check src/public/admin.js && npm run validate:n8n && node --test --test-concurrency=1
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> pixellabs-ai@1.0.0 validate:n8n
+> node scripts/validateN8nWorkflows.js
+
+n8n validado: 12 flujos inactivos, con seguimiento y sin credenciales exportadas.
+✔ API real conserva aprobación manual desde catálogo hasta exportación (300.054994ms)
+Unhandled request error {
+  method: 'POST',
+  path: '/automation/jobs/video-processing',
+  message: 'Idempotency-Key es obligatorio para n8n.'
+}
+Unhandled request error {
+  method: 'POST',
+  path: '/automation/jobs/video-processing',
+  message: 'El flujo no coincide con la ruta solicitada.'
+}
+✔ n8n usa una API limitada y no recibe permisos administrativos (242.403817ms)
+✔ consulta el producto real por referencia y respeta disponibilidad (7.903409ms)
+✔ el enfriamiento impide seleccionar un producto para promoción (3.130446ms)
+✔ corrige solo texto de bajo riesgo y vuelve a revisión (31.915922ms)
+✔ riesgos de privacidad nunca se corrigen automáticamente (5.576821ms)
+✔ bloquea contenido de un producto agotado aunque su puntuación sea alta (0.899108ms)
+✔ una tendencia nueva siempre requiere aprobación humana inicialmente (0.169508ms)
+✔ solo una plantilla segura puede aprobarse automáticamente (0.216347ms)
+✔ el interruptor global bloquea incluso contenido ya aprobado (0.370763ms)
+✔ un borrador revisado sigue esperando aprobación humana (28.224953ms)
+✔ no permite aprobar un borrador que no pasó las ocho revisiones (2.502397ms)
+✔ rechaza contenido duplicado por fingerprint (2.308182ms)
+✔ interpreta Content-Range y calcula el tamaño del fragmento (1.156594ms)
+✔ fusiona rangos contiguos y evita contar bytes duplicados (0.234513ms)
+✔ rechaza rangos inválidos (0.444972ms)
+✔ normaliza plataformas CRM permitidas (0.986676ms)
+✔ mapea contactos sin exponer campos internos (0.677493ms)
+✔ extrae un código de atribución sin confundir texto normal (0.18479ms)
+✔ reconstruye el contexto conversacional persistente para el chatbot (0.217258ms)
+✔ daily plan → drafts → eight reviews → human approval → schedule → simulated publishing → metrics (150.431303ms)
+✔ editing, stock changes and emergency stop invalidate scheduled content (34.532771ms)
+✔ missing media cannot pass automatic review even when the model gives perfect scores (34.126716ms)
+✔ stock and media changes after approval block consumption (40.801852ms)
+✔ quota reservation is atomic and persists across repository instances (2.885932ms)
+✔ Gemini never sends a request without free-tier confirmation and redacts provider errors (0.49879ms)
+✔ las migraciones contienen el esquema completo y valores iniciales seguros (2.271453ms)
+✔ distribuye el plan diario sin publicar ni repetir el mismo minuto (22.944868ms)
+✔ respeta los días sin publicaciones (3.321269ms)
+✔ respeta formatos desactivados y sus límites aunque la plataforma solicite más piezas (8.235559ms)
+✔ el perfil gratuito conserva la API y bloquea archivos de video (261.558776ms)
+✔ el agente local procesa un video real sin devolver rutas absolutas (1064.600038ms)
+✔ la API del agente local usa un token separado y no ejecuta video en Render (248.099743ms)
+✔ Render no consume trabajos reservados para el agente local (14.319511ms)
+✔ otro agente recupera un arrendamiento local vencido (5.157907ms)
+✔ entrega tickets temporales y devuelve clips sin exponer service_role (12.842041ms)
+✔ deriva únicamente el endpoint directo oficial de Storage (0.374929ms)
+✔ prioriza ventas y mensajes sobre visualizaciones aisladas (13.14839ms)
+✔ weekly learning compares content patterns, uses latest counters and excludes simulated posts (21.036137ms)
+✔ los doce contratos n8n encolan datos de prueba sin publicar (539.857949ms)
+✔ readiness de n8n exige Supabase y conserva las barreras (0.945105ms)
+✔ la conexion usa HTTPS, token dedicado y no lo imprime (2.90078ms)
+✔ el verificador importado exige exactamente 12 workflows inactivos (0.726895ms)
+✔ el verificador usa los nombres exactos de los doce JSON aprobados (0.879599ms)
+✔ el cargador acepta exportaciones separadas de n8n (1.424287ms)
+✔ el instalador no activa workflows y evita importaciones duplicadas (0.234444ms)
+✔ los doce workflows quedan inactivos, idempotentes y aislados de Supabase (2.201476ms)
+✔ all migrations execute and dry-run scheduling enforces RLS, approval, limits, leases and idempotence in PostgreSQL (1628.467638ms)
+Unhandled request error {
+  method: 'PATCH',
+  path: '/admin/api/content-engine/settings',
+  message: 'Esta etapa exige modo manual y publicación automática apagada.'
+}
+Unhandled request error {
+  method: 'POST',
+  path: '/admin/api/content-engine/social/oauth/meta/start',
+  message: 'SOCIAL_OAUTH_DISABLED'
+}
+Unhandled request error {
+  method: 'POST',
+  path: '/admin/api/content-engine/catalog/products/LLV-024/media/image',
+  message: 'IMAGE_CONFIRMATIONS_REQUIRED'
+}
+Unhandled request error {
+  method: 'POST',
+  path: '/admin/api/content-engine/content/6b9516e8-62f7-467a-be16-6e83b93b78cd/schedule',
+  message: 'CONTENT_NOT_MANUALLY_APPROVED'
+}
+Unhandled request error {
+  method: 'POST',
+  path: '/admin/api/content-engine/content/6b9516e8-62f7-467a-be16-6e83b93b78cd/schedule',
+  message: 'CONTENT_NOT_MANUALLY_APPROVED'
+}
+✔ panel API uploads owned media, invalidates edits and schedules only manually approved simulations (313.103271ms)
+✔ readiness comprueba configuración, catálogo y Storage privado (1.289589ms)
+✔ readiness rechaza un bucket público (1.746629ms)
+✔ la biblioteca de Supabase entrega clips privados con URLs temporales (1.483253ms)
+✔ reutiliza un artefacto por checksum y limpia la copia redundante (0.821023ms)
+✔ la revisión remota exige privacidad y conserva publicación apagada (1.161632ms)
+✔ el Blueprint gratuito no puede crear disco ni cómputo pagado (1.093322ms)
+✔ el Blueprint de producción conserva Starter y su disco separado (0.262615ms)
+✔ la configuración inicial mantiene aprobación manual y publicación apagada (15.604544ms)
+✔ permite elegir cantidades diarias sin fijarlas en el código (0.823276ms)
+✔ rechaza umbrales de aprobación incoherentes (1.059051ms)
+✔ impide publicación automática mientras la aprobación sea manual (0.251459ms)
+✔ el interruptor de emergencia apaga motor y publicación (1.327685ms)
+✔ no permite evadir aprobación manual con modos avanzados o banderas por plataforma (1.633473ms)
+✔ solo declara formatos admitidos por cada integración oficial (0.885848ms)
+✔ cifra tokens OAuth con AES-256-GCM y detecta alteraciones (0.943432ms)
+✔ adapta el texto por plataforma y mantiene todo como borrador (0.586819ms)
+✔ readiness nunca activa publicación automática (0.152203ms)
+✔ los clientes oficiales bloquean toda llamada externa por defecto (0.492772ms)
+✔ una aprobación explícita conserva los tokens solo en Authorization (0.366126ms)
+✔ Meta uses Facebook Login only and stores Page/Instagram tokens encrypted without modifying Messenger (18.143023ms)
+✔ TikTok connects with video.upload, keeps direct post disabled and persists refreshed encrypted tokens (7.844323ms)
+✔ OAuth is disabled by default and forged or expired states cannot exchange tokens (1.116526ms)
+✔ Instagram carousel creates child containers without publishing; Facebook Reel upload stays on Meta's host (1.41972ms)
+✔ TikTok defaults to inbox upload and rejects unverified URLs and unaudited direct posts (0.478571ms)
+✔ normaliza, puntúa y deduplica una tendencia autorizada (17.947156ms)
+✔ rechaza tendencias con riesgo legal alto (4.398635ms)
+✔ sanea nombres sin permitir rutas externas (0.794855ms)
+✔ recibe fragmentos fuera de orden, permite reanudar y completa (16.331599ms)
+✔ no completa una subida con fragmentos faltantes (3.741222ms)
+✔ rechaza videos demasiado grandes antes de escribirlos (0.891356ms)
+✔ marca como fallido un archivo que no supera la validación (5.465549ms)
+✔ ffmpeg analiza y renderiza verticalmente un clip real (558.458402ms)
+✔ CSP sólo acepta el origen oficial configurado de Supabase (0.905397ms)
+✔ producción desactiva video si no existe una decisión explícita (0.12936ms)
+✔ video local en producción exige almacenamiento marcado como durable (0.453094ms)
+✔ el perfil persistente rechaza Supabase ausente y publicación real (0.146254ms)
+✔ el perfil gratuito acepta Supabase y mantiene video pesado apagado (0.168236ms)
+✔ extrae cambios de escena, silencios y cuadros negros de ffmpeg (2.044195ms)
+✔ propone clips sin duplicados y siempre pendientes de privacidad (0.596524ms)
+✔ el worker consume la cola y registra un resultado persistente (12.044978ms)
+✔ publicación programada queda bloqueada con aprobación manual (7.215302ms)
+✔ reintenta errores transitorios sin duplicar el trabajo (27.578117ms)
+✔ no reintenta errores funcionales de validación (5.79406ms)
+✔ crea trabajos idempotentes para los flujos de n8n (7.7867ms)
+✔ rechaza tipos de flujo no registrados (1.430376ms)
+✔ n8n puede actualizar el resultado de un trabajo persistente (4.726074ms)
+✔ acepta payload n8n e idempotencia limitada (1.298021ms)
+✔ desenvuelve el payload nativo de n8n sin permitir suplantar el origen (0.432003ms)
+✔ rechaza orígenes, claves y estructuras inseguras (0.269685ms)
+✔ la comparación de tokens acepta coincidencias exactas (0.684723ms)
+✔ la comparación de tokens rechaza valores diferentes y vacíos (0.134637ms)
+✔ acepta una firma sha256 auténtica de Meta (1.181141ms)
+✔ rechaza cuerpo alterado, firma inválida o secretos ausentes (0.222866ms)
+ℹ tests 102
+ℹ suites 0
+ℹ pass 102
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9654.324354
