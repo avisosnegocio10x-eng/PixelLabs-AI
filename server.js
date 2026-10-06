@@ -10,6 +10,7 @@ const adminRoutes = require("./src/routes/adminRoutes");
 const legalRoutes = require("./src/routes/legalRoutes");
 const localWorkerRoutes = require("./src/routes/localWorkerRoutes");
 const automationRoutes = require("./src/routes/automationRoutes");
+const { createSocialOAuthRoutes } = require("./src/routes/socialOAuthRoutes");
 const { errorHandler } = require("./src/middleware/errorHandler");
 const {
     validateRuntimeConfiguration
@@ -100,6 +101,7 @@ function createApp() {
 // ============================
 
     app.use("/webhook", webhookRoutes);
+    app.use("/social/oauth", createSocialOAuthRoutes());
 
     app.use("/admin", adminRoutes);
 

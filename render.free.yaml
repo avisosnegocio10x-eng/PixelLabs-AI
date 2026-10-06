@@ -19,6 +19,14 @@ services:
         value: "true"
       - key: CONTENT_ENGINE_AUTO_PUBLISH
         value: "false"
+      - key: AUTO_PUBLICATION
+        value: "false"
+      - key: CONTENT_ENGINE_AI_ENABLED
+        value: "false"
+      - key: CONTENT_ENGINE_GEMINI_FREE_TIER_CONFIRMED
+        value: "false"
+      - key: SOCIAL_OAUTH_ENABLED
+        value: "false"
       - key: SOCIAL_PUBLISH_MODE
         value: draft
       - key: SOCIAL_EXTERNAL_REQUESTS_ENABLED
@@ -44,7 +52,7 @@ services:
       - key: LOCAL_WORKER_MAX_ARTIFACT_BYTES
         value: "50331648"
       - key: SOCIAL_TOKEN_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

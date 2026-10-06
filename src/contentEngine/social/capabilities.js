@@ -1,7 +1,8 @@
 const SOCIAL_CAPABILITIES = Object.freeze({
     facebook: {
         accountType: "Facebook Page",
-        formats: ["page-post", "image", "video", "reel", "story"],
+        formats: ["page-post", "image", "video", "reel"],
+        deferredFormats: ["story"],
         unsupported: ["marketplace-listing", "personal-profile-post"],
         requirements: [
             "Meta app",
@@ -17,7 +18,9 @@ const SOCIAL_CAPABILITIES = Object.freeze({
     },
     instagram: {
         accountType: "Instagram professional account",
-        formats: ["image", "video", "reel", "carousel", "story"],
+        formats: ["image", "video", "reel", "carousel"],
+        deferredFormats: ["story"],
+        loginFlow: "facebook-login",
         unsupported: ["consumer-account-publishing"],
         requirements: [
             "Professional Instagram account",

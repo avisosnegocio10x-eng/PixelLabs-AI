@@ -13,7 +13,7 @@ function validateRuntimeConfiguration(environment = process.env) {
     if (requiresSupabase && !hasSupabaseConfiguration(environment)) {
         errors.push("SUPABASE_REQUIRED_BUT_NOT_CONFIGURED");
     }
-    if (environment.CONTENT_ENGINE_AUTO_PUBLISH === "true") {
+    if (environment.CONTENT_ENGINE_AUTO_PUBLISH === "true" || environment.AUTO_PUBLICATION === "true") {
         errors.push("AUTO_PUBLISH_MUST_REMAIN_DISABLED");
     }
     if (environment.SOCIAL_PUBLISH_MODE && environment.SOCIAL_PUBLISH_MODE !== "draft") {
