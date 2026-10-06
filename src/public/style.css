@@ -203,3 +203,4 @@ nav { display: grid; gap: 6px; }
     .inline-form { grid-template-columns: 1fr; }
     .main-content { padding: 28px 18px 60px; }
 }
+.content-preview { display: block; max-width: 320px; width: 100%; max-height: 420px; object-fit: contain; border-radius: 12px; margin: 12px 0; }

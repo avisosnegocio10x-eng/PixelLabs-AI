@@ -35,6 +35,7 @@
                 <a href="#clips" class="nav-link">Clips y reels</a>
                 <a href="#clients" class="nav-link">CRM</a>
                 <a href="#metrics" class="nav-link">Métricas</a>
+                <a href="#social" class="nav-link">Cuentas sociales</a>
                 <a href="#settings" class="nav-link">Configuración</a>
             </nav>
             <div class="sidebar-footer">
@@ -99,10 +100,15 @@
             <section id="approvals" class="section-block panel">
                 <div class="section-heading">
                     <div><span class="eyebrow">CONTROL HUMANO</span><h2>Aprobaciones pendientes</h2></div>
-                    <button id="refreshApprovals" class="secondary-button">Actualizar</button>
+                    <div class="compact-actions"><button id="generateDaily" class="primary-button">Preparar el día</button>
+                    <button id="refreshApprovals" class="secondary-button">Actualizar</button></div>
                 </div>
                 <p class="section-copy">Nada se programa ni se publica desde aquí sin una aprobación explícita.</p>
+                <p class="section-copy">Durante las pruebas la programación es una simulación. Las publicaciones reales están desactivadas.</p>
+                <div id="approvalMessage" class="inline-message" role="status"></div>
                 <div id="approvalList" class="record-list"></div>
+                <h3>Calendario de simulación</h3>
+                <div id="publicationList" class="record-list"></div>
             </section>
 
             <section id="catalog" class="section-block panel">
@@ -124,6 +130,10 @@
                 <p class="section-copy">Las cantidades son objetivos máximos. Si no hay contenido aprobado, el sistema publicará menos.</p>
 
                 <div class="settings-grid">
+                    <label>Zona horaria<input id="timezone" value="America/El_Salvador"></label>
+                    <label>Horarios de Facebook<input id="facebookTimes" placeholder="09:00, 20:00"></label>
+                    <label>Horarios de Instagram<input id="instagramTimes" placeholder="09:00, 18:30"></label>
+                    <label>Horarios de TikTok<input id="tiktokTimes" placeholder="18:30"></label>
                     <label>Publicaciones estáticas por día<input id="staticPosts" type="number" min="0" max="20"></label>
                     <label>Carruseles por día<input id="carousels" type="number" min="0" max="20"></label>
                     <label>Historias por día<input id="stories" type="number" min="0" max="20"></label>
@@ -132,21 +142,28 @@
                     <label>Facebook por día<input id="facebookPosts" type="number" min="0" max="20"></label>
                     <label>Instagram por día<input id="instagramPosts" type="number" min="0" max="20"></label>
                     <label>Modo de aprobación
-                        <select id="approvalMode">
+                        <select id="approvalMode" disabled>
                             <option value="manual">Manual</option>
-                            <option value="partial">Parcial</option>
-                            <option value="advanced">Avanzado</option>
                         </select>
                     </label>
                     <label>Puntaje para revisión humana<input id="humanApproval" type="number" min="0" max="100"></label>
                     <label>Puntaje para aprobación automática<input id="automaticApproval" type="number" min="0" max="100"></label>
                 </div>
+                <fieldset id="activeDays" class="toggle-row"><legend>Días activos</legend>
+                    <label><input type="checkbox" value="0"> Domingo</label>
+                    <label><input type="checkbox" value="1"> Lunes</label>
+                    <label><input type="checkbox" value="2"> Martes</label>
+                    <label><input type="checkbox" value="3"> Miércoles</label>
+                    <label><input type="checkbox" value="4"> Jueves</label>
+                    <label><input type="checkbox" value="5"> Viernes</label>
+                    <label><input type="checkbox" value="6"> Sábado</label>
+                </fieldset>
 
                 <div class="toggle-row">
-                    <label class="toggle-card"><input id="autoPublish" type="checkbox"><span>Publicación automática global</span></label>
-                    <label class="toggle-card"><input id="facebookAutomation" type="checkbox"><span>Facebook</span></label>
-                    <label class="toggle-card"><input id="instagramAutomation" type="checkbox"><span>Instagram</span></label>
-                    <label class="toggle-card"><input id="tiktokAutomation" type="checkbox"><span>TikTok</span></label>
+                    <label class="toggle-card"><input id="autoPublish" type="checkbox" disabled><span>Publicación automática global</span></label>
+                    <label class="toggle-card"><input id="facebookAutomation" type="checkbox" disabled><span>Facebook</span></label>
+                    <label class="toggle-card"><input id="instagramAutomation" type="checkbox" disabled><span>Instagram</span></label>
+                    <label class="toggle-card"><input id="tiktokAutomation" type="checkbox" disabled><span>TikTok</span></label>
                 </div>
                 <div id="settingsMessage" class="inline-message" role="status"></div>
             </section>
@@ -189,6 +206,15 @@
                 <p class="section-copy">La prioridad es ingresos, ventas, cotizaciones y mensajes calificados; las visualizaciones quedan como señal secundaria.</p>
                 <div id="metricsGrid" class="metric-grid compact-metrics"></div>
                 <div id="metricsList" class="record-list"></div>
+            </section>
+            <section id="social" class="section-block panel">
+                <div class="section-heading"><div><span class="eyebrow">ACCESO OFICIAL</span><h2>Cuentas sociales</h2></div>
+                    <button id="refreshSocial" class="secondary-button">Actualizar</button></div>
+                <p class="section-copy">Conecta Facebook e Instagram mediante Facebook Login. TikTok se prepara primero para enviar borradores a su bandeja de entrada.</p>
+                <div class="compact-actions"><button id="connectMeta" class="primary-button">Conectar Meta</button>
+                    <button id="connectTikTok" class="primary-button">Conectar TikTok</button></div>
+                <div id="socialMessage" class="inline-message" role="status"></div>
+                <div id="socialList" class="record-list"></div>
             </section>
         </main>
     </div>
