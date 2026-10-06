@@ -75,13 +75,13 @@ test("API real conserva aprobación manual desde catálogo hasta exportación", 
     });
     assert.equal(planResponse.status, 201);
     const plan = await planResponse.json();
-    assert.equal(plan.slots.length, 9);
-    assert.equal(new Set(plan.slots.map(slot => slot.plannedFor)).size, 9);
+    assert.equal(plan.slots.length, 3);
+    assert.equal(new Set(plan.slots.map(slot => slot.plannedFor)).size, 3);
     assert.equal(plan.autoPublish, false);
     const calendar = await (await request(
         "/admin/api/content-engine/calendar?date=2026-08-11"
     )).json();
-    assert.equal(calendar.slots.length, 9);
+    assert.equal(calendar.slots.length, 3);
 
     const metrics = await (await request(
         "/admin/api/content-engine/metrics/summary"

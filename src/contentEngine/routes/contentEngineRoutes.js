@@ -17,6 +17,7 @@ const { CloudVideoLibraryService } = require("../video/cloudVideoLibraryService"
 const { createVideoLibraryController } = require("../controllers/videoLibraryController");
 const { createSocialController } = require("../controllers/socialController");
 const { createOperationsController } = require("../controllers/operationsController");
+const { createPublicationController } = require("../controllers/publicationController");
 const {
     hasSupabaseConfiguration
 } = require("../db/supabaseClient");
@@ -52,6 +53,7 @@ function createContentEngineRoutes() {
         : null;
     const socialController = createSocialController();
     const operationsController = createOperationsController();
+    const publicationController = createPublicationController();
     const rawChunk = express.raw({
         type: ["application/octet-stream", "video/*"],
         limit: "128mb"
@@ -172,7 +174,18 @@ function createContentEngineRoutes() {
     router.post("/content/:contentId/review", contentController.review);
     router.post("/content/:contentId/approve", contentController.approve);
     router.post("/content/:contentId/reject", contentController.reject);
+    router.patch("/content/:contentId", contentController.edit);
+    router.post("/content/:contentId/review/automatic", publicationController.review);
+    router.post("/content/:contentId/regenerate", publicationController.regenerate);
+    router.post("/content/:contentId/schedule", publicationController.schedule);
+    router.get("/publication-calendar", publicationController.list);
+    router.post("/publication-calendar/dry-run", publicationController.runDue);
+    router.get("/catalog/products/:reference/media", publicationController.media);
+    router.post("/catalog/products/:reference/media/image", express.raw({ type: "image/*", limit: "8mb" }), publicationController.uploadImage);
+    router.get("/media/:mediaId/preview", publicationController.preview);
     router.get("/social/capabilities", socialController.capabilities);
+    router.get("/social/accounts", socialController.accounts);
+    router.post("/social/oauth/:provider/start", socialController.connect);
     router.post(
         "/content/:contentId/export/:platform",
         socialController.exportVariant

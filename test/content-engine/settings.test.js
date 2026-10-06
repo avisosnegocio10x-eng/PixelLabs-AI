@@ -26,9 +26,9 @@ test("la configuración inicial mantiene aprobación manual y publicación apaga
 
     assert.equal(settings.approvalMode, "manual");
     assert.equal(settings.autoPublish, false);
-    assert.equal(settings.dailyTargets.staticPosts, 4);
+    assert.equal(settings.dailyTargets.staticPosts, 1);
     assert.equal(settings.dailyTargets.reels, 1);
-    assert.equal(settings.dailyTargets.stories, 2);
+    assert.equal(settings.dailyTargets.stories, 0);
 });
 
 test("permite elegir cantidades diarias sin fijarlas en el código", async () => {
@@ -42,7 +42,7 @@ test("permite elegir cantidades diarias sin fijarlas en el código", async () =>
 
     assert.equal(settings.dailyTargets.staticPosts, 5);
     assert.equal(settings.dailyTargets.reels, 2);
-    assert.equal(settings.dailyTargets.stories, 2);
+    assert.equal(settings.dailyTargets.stories, 0);
 });
 
 test("rechaza umbrales de aprobación incoherentes", async () => {
@@ -78,4 +78,15 @@ test("el interruptor de emergencia apaga motor y publicación", async () => {
 
     assert.equal(settings.enabled, false);
     assert.equal(settings.autoPublish, false);
+});
+
+test("no permite evadir aprobación manual con modos avanzados o banderas por plataforma", async () => {
+    const service = new ContentSettingsService(new InMemoryRepository());
+    for (const input of [{ approvalMode: "advanced", autoPublish: true }, { approvalMode: "partial" },
+        { platformAutomation: { facebook: true } }]) {
+        await assert.rejects(service.updateSettings(input), error => error.code === "AUTOMATIC_PUBLICATION_LOCKED");
+    }
+    await service.setEmergencyStop(true);
+    assert.equal((await service.setEmergencyStop(false)).enabled, true);
+    assert.equal((await service.getSettings()).autoPublish, false);
 });

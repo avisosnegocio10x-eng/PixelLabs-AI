@@ -110,14 +110,18 @@ class ContentCorrectionService {
                 failedTypes
             };
         }
-        const updated = await this.repository.update(contentId, {
+        const updated = await this.repository.compareAndUpdate(item, {
             ...after,
             status: "UNDER_REVIEW",
             humanApprovalRequired: true,
+            approvedAt: null,
             metadata: {
                 ...item.metadata,
                 correctionAttempt: attempt,
                 correctionTypes: failedTypes,
+                platformCopies: {},
+                manuallyApproved: false,
+                approvalFingerprint: null,
                 autoPublish: false
             }
         });

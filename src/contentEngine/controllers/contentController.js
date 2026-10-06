@@ -40,6 +40,8 @@ const reviewSchema = z.object({
     findings: z.record(z.string(), z.array(z.unknown())).optional()
 }).strict();
 const rejectSchema = z.object({ reason: z.string().min(3).max(1000) }).strict();
+const editSchema = draftSchema.pick({ title: true, primaryText: true, callToAction: true, hashtags: true })
+    .partial().extend({ mediaAssetIds: z.array(z.string().uuid()).max(10).optional() }).strict();
 
 function invalid(res, error) {
     if (!(error instanceof ZodError)) return false;
@@ -90,6 +92,10 @@ function createContentController(
                 });
                 res.json({ ok: true, item });
             } catch (error) { if (!invalid(res, error)) next(error); }
+        },
+        edit: async (req, res, next) => {
+            try { res.json({ ok: true, item: await service.edit(req.params.contentId, editSchema.parse(req.body || {})) }); }
+            catch (error) { if (!invalid(res, error)) next(error); }
         }
     };
 }
@@ -98,5 +104,6 @@ module.exports = {
     createContentController,
     draftSchema,
     reviewSchema,
-    rejectSchema
+    rejectSchema,
+    editSchema
 };

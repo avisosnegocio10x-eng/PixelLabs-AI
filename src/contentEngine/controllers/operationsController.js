@@ -53,6 +53,7 @@ const metricSchema = z.object({
     capturedAt: z.string().datetime().optional(),
     platform: z.enum(["facebook", "instagram", "tiktok"]).optional(),
     views: z.number().int().nonnegative().optional(),
+    impressions: z.number().int().nonnegative().optional(),
     reach: z.number().int().nonnegative().optional(),
     watchTimeMs: z.number().int().nonnegative().optional(),
     averageRetention: score.optional(),

@@ -14,6 +14,17 @@ const DB_REVIEW_NAMES = {
     businessPotential: "business_potential"
 };
 
+function approvalFingerprint(item) {
+    return fingerprint({
+        productReference: item.productReference, format: item.format, title: item.title,
+        primaryText: item.primaryText, callToAction: item.callToAction, hashtags: item.hashtags,
+        platforms: item.platforms, mediaAssetIds: item.metadata.mediaAssetIds || [],
+        mediaFingerprint: item.metadata.mediaFingerprint || null,
+        platformCopies: item.metadata.platformCopies || {},
+        productSnapshot: item.metadata.verifiedProductFingerprint || null
+    });
+}
+
 class ContentLifecycleService {
     constructor(options = {}) {
         this.repository = options.repository || createContentRepository();
@@ -48,6 +59,8 @@ class ContentLifecycleService {
             productId: product.id,
             category: input.category || product.category,
             metadata: {
+                ...(input.metadata || {}),
+                platforms: [...input.platforms],
                 productReference: product.reference,
                 productAvailability: product.availabilityStatus,
                 commercialDataConfirmed: Boolean(
@@ -63,6 +76,9 @@ class ContentLifecycleService {
 
     async review(id, input) {
         const item = await this.requireItem(id);
+        if (["REJECTED", "ARCHIVED", "PUBLISHED", "SCHEDULED"].includes(item.status)) {
+            throw Object.assign(new Error("CONTENT_NOT_REVIEWABLE"), { code: "CONTENT_NOT_REVIEWABLE", statusCode: 409 });
+        }
         const product = await this.catalog.getByReference(item.productReference);
         const settings = await this.settings.getSettings();
         const decision = decideContent({
@@ -77,22 +93,24 @@ class ContentLifecycleService {
             templateApproved: input.templateApproved,
             newTrend: input.newTrend,
             ownedOrLicensedMedia: input.ownedOrLicensedMedia
-        }, settings);
+        }, { ...settings, autoPublish: false, approvalMode: "manual" });
+        const reviewAttempt = Math.max(input.attempt || 1, Number(item.metadata.reviewAttempt || 0) + 1);
         const reviews = REVIEW_TYPES.map(type => ({
             reviewType: DB_REVIEW_NAMES[type],
             score: input.scores[type],
             passed: input.scores[type] >= settings.thresholds.humanApproval,
             findings: input.findings?.[type] || [],
-            attempt: input.attempt || 1,
+            attempt: reviewAttempt,
             model: input.model || null
         }));
         await this.repository.replaceReviews(id, reviews);
-        const updated = await this.repository.update(id, {
+        const updated = await this.repository.compareAndUpdate(item, {
             status: decision.decision,
             overallScore: decision.overallScore,
             reviewPasses: reviews.filter(review => review.passed).length,
             humanApprovalRequired: true,
-            metadata: { ...item.metadata, decisionReasons: decision.reasons }
+            approvedAt: null,
+            metadata: { ...item.metadata, manuallyApproved: false, approvalFingerprint: null, decisionReasons: decision.reasons, reviewAttempt }
         });
         return { item: updated, decision, reviews };
     }
@@ -112,11 +130,11 @@ class ContentLifecycleService {
                 code: "PRODUCT_UNAVAILABLE"
             });
         }
-        const updated = await this.repository.update(id, {
+        const updated = await this.repository.compareAndUpdate(item, {
             status: "APPROVED",
             approvedAt: new Date().toISOString(),
             humanApprovalRequired: false,
-            metadata: { ...item.metadata, manuallyApproved: true, autoPublish: false }
+            metadata: { ...item.metadata, manuallyApproved: true, approvalFingerprint: approvalFingerprint(item), autoPublish: false }
         });
         await this.repository.audit({
             actorType: "admin-api",
@@ -132,10 +150,11 @@ class ContentLifecycleService {
 
     async reject(id, reason, context = {}) {
         const item = await this.requireItem(id);
-        const updated = await this.repository.update(id, {
+        const updated = await this.repository.compareAndUpdate(item, {
             status: "REJECTED",
             humanApprovalRequired: false,
-            metadata: { ...item.metadata, rejectionReason: reason, autoPublish: false }
+            approvedAt: null,
+            metadata: { ...item.metadata, rejectionReason: reason, manuallyApproved: false, approvalFingerprint: null, autoPublish: false }
         });
         await this.repository.audit({
             actorType: "admin-api",
@@ -146,6 +165,24 @@ class ContentLifecycleService {
             afterData: { status: updated.status, reason },
             requestId: context.requestId || null
         });
+        return updated;
+    }
+
+    async edit(id, changes) {
+        const item = await this.requireItem(id);
+        if (["PUBLISHED", "ARCHIVED"].includes(item.status)) {
+            throw Object.assign(new Error("CONTENT_NOT_EDITABLE"), { code: "CONTENT_NOT_EDITABLE", statusCode: 409 });
+        }
+        const metadata = { ...item.metadata, manuallyApproved: false, approvalFingerprint: null,
+            platformCopies: {}, autoPublish: false };
+        if (changes.mediaAssetIds) metadata.mediaAssetIds = changes.mediaAssetIds;
+        const { mediaAssetIds, ...copyChanges } = changes;
+        const updated = await this.repository.compareAndUpdate(item, {
+            ...copyChanges, status: "DRAFT", approvedAt: null,
+            reviewPasses: 0, overallScore: null, humanApprovalRequired: true, metadata
+        });
+        await this.repository.audit({ actorType: "admin-api", action: "CONTENT_EDITED_APPROVAL_INVALIDATED",
+            entityType: "content_item", entityId: id, beforeData: { status: item.status }, afterData: { status: "DRAFT" } });
         return updated;
     }
 
@@ -163,5 +200,6 @@ class ContentLifecycleService {
 
 module.exports = {
     ContentLifecycleService,
-    DB_REVIEW_NAMES
+    DB_REVIEW_NAMES,
+    approvalFingerprint
 };

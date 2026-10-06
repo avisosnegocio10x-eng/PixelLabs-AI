@@ -24,8 +24,8 @@ test("distribuye el plan diario sin publicar ni repetir el mismo minuto", async 
     const service = await fixture(t);
     const result = await service.createPlan({ date: "2026-08-11" });
     assert.equal(result.status, "PLAN_READY");
-    assert.equal(result.slots.length, 9);
-    assert.equal(new Set(result.slots.map(slot => slot.plannedFor)).size, 9);
+    assert.equal(result.slots.length, 3);
+    assert.equal(new Set(result.slots.map(slot => slot.plannedFor)).size, 3);
     assert.ok(result.slots.every(slot => slot.status === "PROPOSED"));
     assert.ok(result.slots.every(slot => slot.metadata.autoPublish === false));
     for (let index = 4; index < result.slots.length; index += 1) {
@@ -33,7 +33,8 @@ test("distribuye el plan diario sin publicar ni repetir el mismo minuto", async 
         assert.ok(new Set(lastFive).size > 1);
     }
     const repeated = await service.createPlan({ date: "2026-08-11" });
-    assert.equal(repeated.slots.length, 9);
+    assert.equal(repeated.slots.length, 3);
+    assert.deepEqual(repeated.slots.map(slot => slot.id), result.slots.map(slot => slot.id));
 });
 
 test("respeta los días sin publicaciones", async t => {
@@ -44,4 +45,15 @@ test("respeta los días sin publicaciones", async t => {
     const result = await service.createPlan({ date: "2026-08-11" });
     assert.equal(result.status, "REST_DAY");
     assert.deepEqual(result.slots, []);
+});
+
+test("respeta formatos desactivados y sus límites aunque la plataforma solicite más piezas", async t => {
+    const service = await fixture(t, settings => {
+        Object.assign(settings.dailyTargets, { staticPosts: 0, reels: 0, carousels: 1, facebookPosts: 5, instagramPosts: 5, tiktokVideos: 0 });
+        return settings;
+    });
+    const result = await service.createPlan({ date: "2026-10-06" });
+    assert.equal(result.slots.length, 1);
+    assert.deepEqual(result.slots[0].recommendedFormats, ["carousel"]);
+    assert.equal((await service.createPlan({ date: "2026-10-06" })).slots.length, 1);
 });

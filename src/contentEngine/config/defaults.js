@@ -11,13 +11,13 @@ const DEFAULT_CONTENT_SETTINGS = Object.freeze({
     maxCorrectionAttempts: 3,
     reuseCooldownDays: 15,
     dailyTargets: {
-        staticPosts: 4,
+        staticPosts: 1,
         carousels: 0,
-        stories: 2,
+        stories: 0,
         reels: 1,
         tiktokVideos: 1,
-        facebookPosts: 4,
-        instagramPosts: 4
+        facebookPosts: 1,
+        instagramPosts: 1
     },
     platformAutomation: {
         facebook: false,

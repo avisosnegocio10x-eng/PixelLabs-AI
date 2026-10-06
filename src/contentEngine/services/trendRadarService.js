@@ -179,10 +179,11 @@ class TrendRadarService {
 
     async listCandidates(filters = {}) {
         const settings = await this.settings.getSettings();
-        return this.repository.listCandidates({
+        const candidates = await this.repository.listCandidates({
             minimumScore: filters.minimumScore ?? settings.minimumTrendScore,
             limit: filters.limit
         });
+        return candidates.filter(trend => !trend.expiresAt || Date.parse(trend.expiresAt) > this.now().getTime());
     }
 }
 

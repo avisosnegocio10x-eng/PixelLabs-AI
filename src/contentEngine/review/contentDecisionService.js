@@ -53,6 +53,11 @@ function decideContent(input, settings) {
         };
     }
 
+    if (REVIEW_TYPES.some(type => input.scores[type] < settings.thresholds.humanApproval)) {
+        return { overallScore, decision: "NEEDS_CORRECTION", eligibleForAutomaticPublishing: false,
+            reasons: ["INDIVIDUAL_REVIEW_BELOW_THRESHOLD"] };
+    }
+
     const automaticConditions = [
         settings.enabled,
         settings.autoPublish,

@@ -11,7 +11,8 @@ const CATEGORY_ROTATION = Object.freeze([
 
 function assertDate(value) {
     const date = String(value || "");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T12:00:00Z`))) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T12:00:00Z`)) ||
+        new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) !== date) {
         throw Object.assign(new Error("Fecha editorial inválida."), {
             statusCode: 422,
             code: "INVALID_EDITORIAL_DATE"
@@ -96,6 +97,7 @@ class EditorialPlannerService {
     async createPlan(input = {}) {
         const date = assertDate(input.date);
         const settings = await this.settings.getSettings();
+        if (!settings.enabled) return { status: "ENGINE_STOPPED", date, slots: [], requiresHumanApproval: true };
         const dayOfWeek = new Date(`${date}T12:00:00Z`).getUTCDay();
         if (settings.restDays.includes(dayOfWeek)) {
             return { status: "REST_DAY", date, slots: [], requiresHumanApproval: true };
@@ -126,8 +128,16 @@ class EditorialPlannerService {
         const existing = await this.repository.listRange(from, to);
         const reserved = new Set(existing.map(slot => slot.plannedFor.slice(0, 16)));
         const slots = [];
-        let categoryIndex = 0;
-        let productIndex = 0;
+        const formatLimits = { post: settings.dailyTargets.staticPosts, carousel: settings.dailyTargets.carousels,
+            reel: settings.dailyTargets.reels };
+        const formatCounts = { post: 0, carousel: 0, reel: 0 };
+        for (const slot of existing.filter(slot => slot.status !== "ARCHIVED" && slot.platform !== "tiktok")) {
+            const format = slot.recommendedFormats[0];
+            if (format in formatCounts) formatCounts[format] += 1;
+        }
+        const dayIndex = Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000);
+        let categoryIndex = dayIndex % CATEGORY_ROTATION.length;
+        let productIndex = dayIndex % products.length;
         let trendIndex = 0;
         for (const platform of platforms) {
             const target = platform === "facebook"
@@ -136,7 +146,8 @@ class EditorialPlannerService {
                     ? settings.dailyTargets.instagramPosts
                     : settings.dailyTargets.tiktokVideos;
             const times = candidateTimes(settings.preferredTimes[platform], target);
-            for (let index = 0; index < target; index += 1) {
+            const platformExisting = existing.filter(slot => slot.platform === platform && slot.status !== "ARCHIVED");
+            for (let index = platformExisting.length; index < target; index += 1) {
                 let minute = clockToMinutes(times[index]);
                 let plannedFor = localTimeToIso(date, minutesToClock(minute), settings.timezone);
                 let attempts = 0;
@@ -155,13 +166,19 @@ class EditorialPlannerService {
                 const trend = category === "trend" && trends.length
                     ? trends[trendIndex++ % trends.length]
                     : null;
-                const format = platform === "tiktok"
+                let format = platform === "tiktok"
                     ? "short_video"
                     : category === "process" || category === "trend"
                         ? "reel"
                         : category === "educational" && settings.dailyTargets.carousels > 0
                             ? "carousel"
                             : "post";
+                if (platform !== "tiktok") {
+                    const candidates = [...new Set([format, "post", "reel", "carousel"])];
+                    format = candidates.find(value => formatCounts[value] < formatLimits[value]);
+                    if (!format) continue;
+                    formatCounts[format] += 1;
+                }
                 const concept = trend
                     ? `Adaptar la tendencia “${trend.name}” al producto ${product.name} sin copiar contenido ajeno.`
                     : `${category}: presentar ${product.name} con material propio de PixelLabs.`;
@@ -194,9 +211,9 @@ class EditorialPlannerService {
         }
         const saved = await this.repository.upsertMany(slots);
         return {
-            status: saved.length ? "PLAN_READY" : "NO_SLOTS_CREATED",
+            status: saved.length || existing.length ? "PLAN_READY" : "NO_SLOTS_CREATED",
             date,
-            slots: saved,
+            slots: [...existing.filter(slot => platforms.includes(slot.platform)), ...saved],
             requiresHumanApproval: true,
             autoPublish: false
         };

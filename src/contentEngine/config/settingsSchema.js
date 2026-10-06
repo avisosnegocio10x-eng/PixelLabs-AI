@@ -7,7 +7,10 @@ const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const contentSettingsSchema = z.object({
     enabled: z.boolean(),
     autoPublish: z.boolean(),
-    timezone: z.string().min(1).max(100),
+    timezone: z.string().min(1).max(100).refine(value => {
+        try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; }
+        catch { return false; }
+    }, "Zona horaria inválida."),
     approvalMode: z.enum(["manual", "partial", "advanced"]),
     minimumTrendScore: score,
     thresholds: z.object({

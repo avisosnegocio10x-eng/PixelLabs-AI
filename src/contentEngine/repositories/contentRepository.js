@@ -65,7 +65,8 @@ class FileContentRepository {
         });
         await this.store.update(document => {
             const duplicate = document.contentItems.find(existing => (
-                existing.metadata?.contentFingerprint === input.metadata.contentFingerprint
+                existing.metadata?.contentFingerprint === input.metadata.contentFingerprint ||
+                (input.metadata.generationKey && existing.metadata?.generationKey === input.metadata.generationKey)
             ));
             if (duplicate) {
                 throw Object.assign(new Error("El contenido ya existe."), {
@@ -93,6 +94,24 @@ class FileContentRepository {
         return mapContentItem(document.contentItems.find(item => item.id === id));
     }
 
+    async findByGenerationKey(key) {
+        const document = await this.store.read();
+        return mapContentItem(document.contentItems.find(item => item.metadata?.generationKey === key));
+    }
+
+    async compareAndUpdate(item, changes) {
+        let updated = null;
+        await this.store.update(document => {
+            const index = document.contentItems.findIndex(row => row.id === item.id && row.updatedAt === item.updatedAt);
+            if (index < 0) return;
+            document.contentItems[index] = { ...document.contentItems[index], ...changes,
+                updatedAt: new Date(Math.max(Date.now(), Date.parse(item.updatedAt) + 1)).toISOString() };
+            updated = mapContentItem(document.contentItems[index]);
+        });
+        if (!updated) throw Object.assign(new Error("CONTENT_CHANGED_RELOAD"), { code: "CONTENT_CHANGED_RELOAD", statusCode: 409 });
+        return updated;
+    }
+
     async update(id, changes) {
         let updated = null;
         await this.store.update(document => {
@@ -110,7 +129,6 @@ class FileContentRepository {
 
     async replaceReviews(contentItemId, reviews) {
         await this.store.update(document => {
-            document.reviews = document.reviews.filter(review => review.contentItemId !== contentItemId);
             document.reviews.push(...reviews.map(review => ({
                 id: crypto.randomUUID(),
                 contentItemId,
@@ -122,6 +140,12 @@ class FileContentRepository {
     }
 
     async getReviews(contentItemId) {
+        const history = await this.getReviewHistory(contentItemId);
+        const latestAttempt = Math.max(0, ...history.map(review => Number(review.attempt || 1)));
+        return history.filter(review => Number(review.attempt || 1) === latestAttempt);
+    }
+
+    async getReviewHistory(contentItemId) {
         const document = await this.store.read();
         return document.reviews.filter(review => review.contentItemId === contentItemId);
     }
@@ -208,6 +232,24 @@ class SupabaseContentRepository {
         return mapContentItem(data);
     }
 
+    async findByGenerationKey(key) {
+        const { data, error } = await this.client.from("content_items").select("*")
+            .contains("metadata", { generationKey: key }).maybeSingle();
+        if (error) throw new Error("CONTENT_GENERATION_LOOKUP_FAILED");
+        return mapContentItem(data);
+    }
+
+    async compareAndUpdate(item, changes) {
+        const mapping = { primaryText: "primary_text", callToAction: "call_to_action", approvedAt: "approved_at",
+            humanApprovalRequired: "human_approval_required", overallScore: "overall_score", reviewPasses: "review_passes" };
+        const update = Object.fromEntries(Object.entries(changes).map(([key, value]) => [mapping[key] || key, value]));
+        const { data, error } = await this.client.from("content_items").update(update)
+            .eq("id", item.id).eq("updated_at", item.updatedAt).select("*").maybeSingle();
+        if (error) throw new Error("CONTENT_UPDATE_FAILED");
+        if (!data) throw Object.assign(new Error("CONTENT_CHANGED_RELOAD"), { code: "CONTENT_CHANGED_RELOAD", statusCode: 409 });
+        return mapContentItem(data);
+    }
+
     async update(id, changes) {
         const mapping = {
             productId: "product_id",
@@ -227,9 +269,7 @@ class SupabaseContentRepository {
     }
 
     async replaceReviews(contentItemId, reviews) {
-        const { error: deleteError } = await this.client.from("content_reviews")
-            .delete().eq("content_item_id", contentItemId);
-        if (deleteError) throw new Error(`No se pudieron reemplazar revisiones: ${deleteError.message}`);
+        if (!reviews.length) return [];
         const records = reviews.map(review => ({
             content_item_id: contentItemId,
             review_type: review.reviewType,
@@ -245,6 +285,12 @@ class SupabaseContentRepository {
     }
 
     async getReviews(contentItemId) {
+        const history = await this.getReviewHistory(contentItemId);
+        const latestAttempt = Math.max(0, ...history.map(review => Number(review.attempt || 1)));
+        return history.filter(review => Number(review.attempt || 1) === latestAttempt);
+    }
+
+    async getReviewHistory(contentItemId) {
         const { data, error } = await this.client.from("content_reviews")
             .select("*").eq("content_item_id", contentItemId).order("reviewed_at");
         if (error) throw new Error(`No se pudieron leer revisiones: ${error.message}`);

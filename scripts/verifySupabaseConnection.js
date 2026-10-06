@@ -14,11 +14,19 @@ async function main() {
         "video_clips",
         "crm_contacts",
         "crm_messages",
-        "workflow_jobs"
+        "workflow_jobs",
+        "content_ideas", "media_assets", "product_media", "content_reviews", "content_corrections",
+        "content_variants", "content_schedule", "published_content", "publication_attempts",
+        "social_accounts", "social_account_tokens", "social_metrics", "content_ai_usage"
     ];
     for (const table of requiredTables) {
         const { error } = await client.from(table).select("*", { head: true, count: "exact" }).limit(1);
         if (error) throw new Error(`La tabla ${table} no está lista: ${error.message}`);
+    }
+    for (const [table, columns] of [["content_schedule", "execution_mode,approval_fingerprint,idempotency_key,lease_expires_at"],
+        ["published_content", "is_simulated"], ["social_metrics", "impressions"]]) {
+        const { error } = await client.from(table).select(columns, { head: true }).limit(1);
+        if (error) throw new Error(`Falta aplicar 20261006000920_content_pipeline.sql: ${table}.`);
     }
     const { data: settings, error: settingsError } = await client.from("content_settings")
         .select("settings").eq("scope", "global").single();

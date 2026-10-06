@@ -7,12 +7,13 @@ function normalizeHashtags(hashtags, max) {
 }
 
 function createPlatformVariant(item, product, platform) {
-    const baseText = item.primaryText || item.title || product.name;
-    const cta = item.callToAction || "Escríbenos para cotizar.";
+    const copy = item.metadata?.platformCopies?.[platform];
+    const baseText = copy?.caption || item.primaryText || item.title || product.name;
+    const cta = copy?.callToAction || item.callToAction || "Escríbenos para cotizar.";
     let caption;
     let format = item.format;
     if (platform === "tiktok") {
-        format = item.format === "image" ? "photo" : "video";
+        format = ["image", "carousel", "post", "photo"].includes(item.format) ? "photo" : "video";
         assertSupported(platform, format);
         caption = `${item.title ? `${item.title}\n` : ""}${baseText}\n${cta}\n${normalizeHashtags(item.hashtags, 5).join(" ")}`.trim();
     } else if (platform === "instagram") {
@@ -31,6 +32,8 @@ function createPlatformVariant(item, product, platform) {
         format,
         title: item.title,
         caption,
+        hashtags: normalizeHashtags(copy?.hashtags || item.hashtags, platform === "tiktok" ? 5 : 12),
+        mediaAssetIds: item.metadata?.mediaAssetIds || [],
         status: "DRAFT",
         requiresHumanApproval: true,
         autoPublish: false,

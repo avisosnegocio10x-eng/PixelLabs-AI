@@ -1,7 +1,7 @@
 const { createMetricsRepository } = require("../repositories/metricsRepository");
 
 const INTEGER_FIELDS = Object.freeze([
-    "views", "reach", "watchTimeMs", "likes", "comments", "shares", "saves",
+    "views", "impressions", "reach", "watchTimeMs", "likes", "comments", "shares", "saves",
     "profileVisits", "clicks", "messages", "quoteRequests", "sales"
 ]);
 
@@ -60,6 +60,33 @@ function conversionScore(metric) {
     );
 }
 
+function compareContent(metrics, timezone = "America/El_Salvador") {
+    const dimensions = ["format", "product", "hook", "topic", "duration", "cta", "platform", "weekday", "hour"];
+    const groups = Object.fromEntries(dimensions.map(name => [name, new Map()]));
+    for (const metric of metrics) {
+        const context = metric.publicationContext || {};
+        const date = context.publishedAt && !Number.isNaN(Date.parse(context.publishedAt)) ? new Date(context.publishedAt) : null;
+        const duration = Number(context.durationMs);
+        const values = { format: context.format, product: context.productReference, hook: context.hook,
+            topic: context.topic, cta: context.callToAction, platform: metric.platform,
+            duration: duration > 0 ? duration <= 15000 ? "0–15s" : duration <= 30000 ? "16–30s" : duration <= 60000 ? "31–60s" : "61s+" : null,
+            weekday: date ? new Intl.DateTimeFormat("es-SV", { timeZone: timezone, weekday: "long" }).format(date) : null,
+            hour: date ? new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", hourCycle: "h23" }).format(date) : null };
+        for (const name of dimensions) {
+            if (!values[name]) continue; // Unknown metadata is not guessed.
+            const value = String(values[name]).slice(0, 250);
+            const group = groups[name].get(value) || { value, publications: 0, views: 0, messages: 0, quoteRequests: 0, sales: 0, revenue: 0, conversionScore: 0 };
+            group.publications += 1;
+            for (const field of ["views", "messages", "quoteRequests", "sales", "revenue"]) group[field] += metric[field] || 0;
+            group.conversionScore += conversionScore(metric);
+            groups[name].set(value, group);
+        }
+    }
+    return Object.fromEntries(dimensions.map(name => [name, [...groups[name].values()].map(group => ({
+        ...group, averageConversionScore: group.conversionScore / group.publications
+    })).sort((a, b) => b.averageConversionScore - a.averageConversionScore)]));
+}
+
 class MetricsService {
     constructor(options = {}) {
         this.repository = options.repository || createMetricsRepository();
@@ -77,10 +104,18 @@ class MetricsService {
         return results;
     }
 
-    async summary(limit = 1000) {
-        const metrics = await this.repository.listRecent(limit);
+    async summary(limit = 1000, options = {}) {
+        const snapshots = await this.repository.listRecent(limit);
+        const latest = new Map();
+        for (const metric of snapshots) {
+            if (metric.rawMetrics.simulated || metric.isSimulated ||
+                (options.since && metric.capturedAt < options.since)) continue;
+            const current = latest.get(metric.publishedContentId);
+            if (!current || metric.capturedAt > current.capturedAt) latest.set(metric.publishedContentId, metric);
+        }
+        const metrics = [...latest.values()];
         const totals = {
-            views: 0, reach: 0, watchTimeMs: 0, likes: 0, comments: 0,
+            views: 0, impressions: 0, reach: 0, watchTimeMs: 0, likes: 0, comments: 0,
             shares: 0, saves: 0, profileVisits: 0, clicks: 0, messages: 0,
             quoteRequests: 0, sales: 0, revenue: 0
         };
@@ -103,15 +138,19 @@ class MetricsService {
             .sort((a, b) => b.conversionScore - a.conversionScore);
         return {
             records: metrics.length,
+            snapshots: snapshots.length,
             totals,
             platforms,
             bestPlatform: platforms[0]?.platform || null,
+            comparisons: compareContent(metrics, options.timezone),
             priority: ["revenue", "sales", "quoteRequests", "messages", "views"]
         };
     }
 
-    async weeklyRecommendations() {
-        const summary = await this.summary();
+    async weeklyRecommendations(options = {}) {
+        const now = options.now || new Date();
+        const since = new Date(now.getTime() - 7 * 86400000).toISOString();
+        const summary = await this.summary(2000, { since, timezone: options.timezone });
         if (!summary.records) {
             return {
                 status: "NO_VERIFIED_METRICS",
@@ -133,11 +172,19 @@ class MetricsService {
                 reason: "Hay visualizaciones, pero todavía no se atribuyen mensajes."
             });
         }
+        for (const [dimension, groups] of Object.entries(summary.comparisons)) {
+            const enoughData = groups.filter(group => group.publications >= 3);
+            if (enoughData.length < 2 || enoughData[0].averageConversionScore <= enoughData[1].averageConversionScore) continue;
+            recommendations.push({ type: "TEST_CONTENT_PATTERN", dimension, value: enoughData[0].value,
+                reason: "Mayor valor comercial promedio por publicación en esta semana; propuesta para revisión humana, sin afirmar causalidad.",
+                evidence: enoughData.slice(0, 2), requiresHumanApproval: true });
+        }
         return {
             status: "RECOMMENDATIONS_READY",
             automaticSettingsChanged: false,
             recommendations,
-            summary
+            summary,
+            period: { from: since, to: now.toISOString() }
         };
     }
 }
@@ -145,5 +192,6 @@ class MetricsService {
 module.exports = {
     MetricsService,
     normalizeMetric,
-    conversionScore
+    conversionScore,
+    compareContent
 };

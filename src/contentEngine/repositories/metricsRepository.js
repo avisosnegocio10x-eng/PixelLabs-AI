@@ -8,12 +8,26 @@ const {
 
 function mapMetric(row) {
     if (!row) return null;
+    const published = row.published_content;
+    const variant = published?.content_variants;
+    const item = variant?.content_items;
+    const basis = Number(row.reach) > 0 ? "reach" : Number(row.impressions) > 0 ? "impressions" : Number(row.views) > 0 ? "views" : null;
     return {
         id: row.id,
         publishedContentId: row.published_content_id || row.publishedContentId,
         capturedAt: row.captured_at || row.capturedAt,
         platform: row.published_content?.platform || row.platform || null,
         views: Number(row.views || 0),
+        impressions: Number(row.impressions || 0),
+        engagementBasis: basis,
+        engagementRate: basis ? ["likes", "comments", "shares", "saves"].reduce((sum, name) => sum + Number(row[name] || 0), 0) / Number(row[basis]) * 100 : null,
+        isSimulated: row.published_content?.is_simulated || row.isSimulated || false,
+        publicationContext: item ? {
+            platform: published.platform, publishedAt: published.published_at, format: variant.format,
+            productReference: item.products?.reference || item.metadata?.productReference,
+            hook: variant.title || item.metadata?.hook, topic: item.category,
+            durationMs: item.metadata?.durationMs, callToAction: item.call_to_action
+        } : row.publicationContext || row.raw_metrics?.publicationContext || row.rawMetrics?.publicationContext || {},
         reach: Number(row.reach || 0),
         watchTimeMs: Number(row.watch_time_ms ?? row.watchTimeMs ?? 0),
         averageRetention: Number(row.average_retention ?? row.averageRetention ?? 0),
@@ -76,6 +90,7 @@ class SupabaseMetricsRepository {
             published_content_id: input.publishedContentId,
             captured_at: input.capturedAt,
             views: input.views,
+            impressions: input.impressions,
             reach: input.reach,
             watch_time_ms: input.watchTimeMs,
             average_retention: input.averageRetention,
@@ -93,7 +108,7 @@ class SupabaseMetricsRepository {
         };
         const { data, error } = await this.client.from("social_metrics")
             .upsert(record, { onConflict: "published_content_id,captured_at" })
-            .select("*, published_content(platform)").single();
+            .select("*, published_content(platform,is_simulated,published_at,content_variants(format,title,content_items(category,call_to_action,metadata,products(reference))))").single();
         if (error) throw new Error(`No se pudieron guardar métricas: ${error.message}`);
         return mapMetric(data);
     }
@@ -101,7 +116,7 @@ class SupabaseMetricsRepository {
     async listRecent(limit = 500) {
         const safeLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
         const { data, error } = await this.client.from("social_metrics")
-            .select("*, published_content(platform)")
+            .select("*, published_content(platform,is_simulated,published_at,content_variants(format,title,content_items(category,call_to_action,metadata,products(reference))))")
             .order("captured_at", { ascending: false }).limit(safeLimit);
         if (error) throw new Error(`No se pudieron consultar métricas: ${error.message}`);
         return (data || []).map(mapMetric);

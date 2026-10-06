@@ -8,6 +8,8 @@ const { MetricsService } = require("./metricsService");
 const { createCrmRepository } = require("../repositories/crmRepository");
 const { createContentRepository } = require("../repositories/contentRepository");
 const { createWorkflowJobRepository } = require("../repositories/workflowJobRepository");
+const { DailyContentPipelineService, editorialDate } = require("./dailyContentPipelineService");
+const { PublicationSchedulerService } = require("./publicationSchedulerService");
 
 function createWorkflowHandlers(options = {}) {
     const catalog = options.catalog || createCatalogRepository();
@@ -20,6 +22,8 @@ function createWorkflowHandlers(options = {}) {
     const crm = options.crm || createCrmRepository();
     const content = options.content || createContentRepository();
     const jobs = options.jobs || createWorkflowJobRepository();
+    const daily = options.daily || new DailyContentPipelineService({ ...options, lifecycle, planner });
+    const scheduler = options.scheduler || new PublicationSchedulerService({ ...options, lifecycle });
     return {
         "trend-research": async payload => {
             if (!Array.isArray(payload.observations) || payload.observations.length === 0) {
@@ -40,7 +44,7 @@ function createWorkflowHandlers(options = {}) {
             };
         },
         "editorial-plan": async payload => {
-            const date = payload.date || new Date().toISOString().slice(0, 10);
+            const date = payload.date || editorialDate((await settings.getSettings()).timezone);
             return planner.createPlan({
                 date,
                 platforms: payload.platforms,
@@ -50,6 +54,8 @@ function createWorkflowHandlers(options = {}) {
             });
         },
         "content-generation": async payload => {
+            if (payload.daily === true) return daily.runDay(payload);
+            if (payload.generationKey || payload.ideaId) return daily.generator.generate(payload);
             const product = payload.productReference
                 ? await catalog.getByReference(payload.productReference)
                 : null;
@@ -84,6 +90,8 @@ function createWorkflowHandlers(options = {}) {
             requiresHumanApproval: true
         }),
         "multi-review": async payload => {
+            if (payload.batch === true) return daily.reviewPending();
+            if (payload.contentId && !payload.scores && payload.automatic === true) return daily.reviewer.review(payload.contentId);
             if (!payload.contentId) return { status: "CONTENT_ID_REQUIRED" };
             if (!payload.scores) {
                 return {
@@ -98,14 +106,22 @@ function createWorkflowHandlers(options = {}) {
             const result = await lifecycle.review(payload.contentId, payload);
             return { status: "REVIEW_COMPLETED", ...result, requiresHumanApproval: true };
         },
-        "content-correction": async payload => payload.contentId
-            ? corrections.correct(payload.contentId)
-            : {
+        "content-correction": async payload => {
+            if (payload.batch === true) {
+                const items = await content.list({ status: "NEEDS_CORRECTION", limit: 100 });
+                const results = [];
+                for (const item of items.slice(0, 12)) results.push(await corrections.correct(item.id));
+                return { status: "BATCH_CORRECTION_COMPLETED", results, autoPublish: false };
+            }
+            return payload.contentId ? corrections.correct(payload.contentId) : {
                 status: "CONTENT_ID_REQUIRED",
                 maxAutomaticAttempts: (await settings.getSettings()).maxCorrectionAttempts,
                 publishOnFailure: false
-            },
+            };
+        },
         "approval-routing": async payload => {
+            if (payload.batch === true) return { status: "REQUIRES_HUMAN_APPROVAL",
+                items: await content.list({ status: "REQUIRES_HUMAN_APPROVAL" }), autoPublish: false };
             if (!payload.contentId) return { status: "CONTENT_ID_REQUIRED", autoPublish: false };
             const item = await lifecycle.requireItem(payload.contentId);
             return {
@@ -117,7 +133,8 @@ function createWorkflowHandlers(options = {}) {
                 autoPublish: false
             };
         },
-        "schedule-publish": async () => {
+        "schedule-publish": async payload => {
+            if (payload.dryRun === true) return scheduler.runDue();
             const current = await settings.getSettings();
             if (!current.enabled) {
                 return { status: "BLOCKED", reason: "ENGINE_STOPPED", externalRequestsSent: 0 };
@@ -144,7 +161,7 @@ function createWorkflowHandlers(options = {}) {
         },
         "weekly-optimization": async () => {
             const [recommendations, crmSummary, contentItems, products] = await Promise.all([
-                metrics.weeklyRecommendations(),
+                metrics.weeklyRecommendations({ timezone: (await settings.getSettings()).timezone }),
                 crm.dashboard(),
                 content.list({ limit: 250 }),
                 catalog.list()

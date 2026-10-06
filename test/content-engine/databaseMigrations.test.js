@@ -18,9 +18,9 @@ test("las migraciones contienen el esquema completo y valores iniciales seguros"
         path.join(directory, "005_admin_rls_hardening.sql"),
         "utf8"
     );
-    const tables = [...sql.matchAll(/create table if not exists\s+([a-z_]+)/gi)]
+    const tables = [...sql.matchAll(/create table if not exists\s+(?:public\.)?([a-z_]+)/gi)]
         .map(match => match[1]);
-    assert.equal(new Set(tables).size, 36);
+    assert.equal(new Set(tables).size, 37);
     for (const table of [
         "content_settings", "products", "content_items", "video_clips",
         "crm_contacts", "crm_conversations", "crm_messages",
