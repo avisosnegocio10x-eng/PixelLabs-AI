@@ -11,7 +11,9 @@ const ALLOWED_NODE_TYPES = new Set([
     "n8n-nodes-base.scheduleTrigger",
     "n8n-nodes-base.executeWorkflowTrigger",
     "n8n-nodes-base.httpRequest",
-    "n8n-nodes-base.wait"
+    "n8n-nodes-base.wait",
+    "n8n-nodes-base.if",
+    "n8n-nodes-base.stopAndError"
 ]);
 
 if (files.length !== 12) errors.push(`Se esperaban 12 flujos y se encontraron ${files.length}.`);
@@ -73,21 +75,22 @@ for (const file of files) {
                 }
                 if (
                     node.parameters?.contentType !== "json" ||
-                    node.parameters?.specifyBody !== "keypair" ||
+                    node.parameters?.specifyBody !== "json" ||
                     node.parameters?.body ||
                     node.parameters?.rawContentType ||
-                    node.parameters?.jsonBody
+                    node.parameters?.bodyParameters ||
+                    !String(node.parameters?.jsonBody).startsWith("={{ JSON.stringify(")
                 ) {
                     errors.push(`${file}: el encolado debe usar el cuerpo JSON nativo de n8n.`);
                 }
-                const bodyFields = node.parameters?.bodyParameters?.parameters || [];
-                if (!bodyFields.some(field => field.name === "source" && field.value === "n8n")) {
+                const jsonBody = String(node.parameters?.jsonBody || "");
+                if (!jsonBody.includes("source: 'n8n'")) {
                     errors.push(`${file}: el payload debe fijar source=n8n.`);
                 }
-                if (!bodyFields.some(field => field.name === "payload" && String(field.value).includes("$json"))) {
+                if (!jsonBody.includes("payload:") || !jsonBody.includes("$json")) {
                     errors.push(`${file}: el payload debe conservar los datos de entrada.`);
                 }
-                if (!bodyFields.some(field => field.name === "n8nExecutionId")) {
+                if (!jsonBody.includes("n8nExecutionId: $execution.id")) {
                     errors.push(`${file}: el payload no registra la ejecución de n8n.`);
                 }
             }

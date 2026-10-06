@@ -11,6 +11,7 @@
     "check": "node --check server.js && node --check src/public/admin.js && npm run validate:n8n && node --test --test-concurrency=1",
     "build:n8n": "node scripts/buildN8nWorkflows.js",
     "validate:n8n": "node scripts/validateN8nWorkflows.js",
+    "test:n8n:runtime": "node n8n/local/runtimeSmokeTest.js",
     "verify:supabase": "node scripts/verifySupabaseConnection.js",
     "worker:local": "node scripts/localVideoWorker.js"
   },
@@ -39,6 +40,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.4.1",
     "nodemon": "^3.1.14"
   }
 }
