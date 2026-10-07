@@ -1,0 +1,29 @@
+# Additive override: the legacy Render-only compose remains usable on its own.
+services:
+  backend:
+    image: node:22-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "setup/windows/service-host.js", "backend", "${PIXELLABS_BACKEND_INSTANCE}"]
+    env_file:
+      - ${PIXELLABS_LOCAL_ENV_FILE}
+    environment:
+      PIXELLABS_CONTAINER_BACKEND: "true"
+    ports:
+      - "127.0.0.1:${PIXELLABS_BACKEND_PORT:-3000}:3000"
+    volumes:
+      - ${PIXELLABS_REPO_PATH}:/app:ro
+      - ${PIXELLABS_REPO_PATH}/storage:/app/storage
+      - ${PIXELLABS_REPO_PATH}/logs:/app/logs
+      - ${PIXELLABS_REPO_PATH}/setup/windows/state:/app/setup/windows/state
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  n8n:
+    volumes:
+      - ${PIXELLABS_REPO_PATH}/setup/windows/state/n8n-staging:/setup
+    depends_on:
+      backend:
+        condition: service_healthy

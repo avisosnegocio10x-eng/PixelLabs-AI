@@ -46,7 +46,8 @@ async function main() {
     console.log(`Supabase verificado: ${requiredTables.length} tablas, ${product.reference} y bucket privado.`);
 }
 
-main().catch(error => {
+if (require.main === module) main().catch(error => {
     console.error(`Verificación de Supabase fallida: ${error.message}`);
     process.exitCode = 1;
 });
+module.exports = { main };
