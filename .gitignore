@@ -7,3 +7,8 @@ n8n/local/config.env
 storage/
 npm-debug.log*
 supabase/.temp/
+setup/windows/*.env
+setup/windows/*.env.*.tmp
+n8n/local/config.env.*.tmp
+setup/windows/state/
+logs/

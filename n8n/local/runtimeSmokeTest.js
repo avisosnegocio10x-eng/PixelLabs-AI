@@ -22,7 +22,7 @@ async function main() {
         LOCAL_WORKER_API_TOKEN: crypto.randomBytes(32).toString("hex")
     });
     for (const name of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "GEMINI_API_KEY", "META_APP_SECRET", "TIKTOK_CLIENT_SECRET"])
-        delete process.env[name];
+        process.env[name] = ""; // Do not let dotenv reload production credentials from a legacy .env.
     const env = { ...process.env, NODE_ENV: "production", N8N_USER_FOLDER: path.join(directory, "n8n"),
         N8N_ENCRYPTION_KEY: crypto.randomBytes(32).toString("hex"), N8N_DIAGNOSTICS_ENABLED: "false",
         N8N_BLOCK_ENV_ACCESS_IN_NODE: "false", N8N_RUNNERS_ENABLED: "false", N8N_LOG_LEVEL: "info" };

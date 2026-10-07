@@ -5,7 +5,7 @@ services:
     ports:
       - "127.0.0.1:5678:5678"
     env_file:
-      - config.env
+      - ${PIXELLABS_N8N_CONFIG_FILE:-config.env}
     environment:
       N8N_HOST: 127.0.0.1
       N8N_PORT: "5678"
@@ -30,6 +30,7 @@ services:
       - ../workflows:/workflows:ro
       - ./verifyConnection.js:/opt/pixellabs/verifyConnection.js:ro
       - ./verifyImportedWorkflows.js:/opt/pixellabs/verifyImportedWorkflows.js:ro
+      - ./prepareMissingWorkflows.js:/opt/pixellabs/prepareMissingWorkflows.js:ro
 
 volumes:
   pixellabs_n8n_data:
