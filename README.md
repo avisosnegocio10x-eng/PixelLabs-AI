@@ -43,6 +43,8 @@ flujos n8n están desactivados. El registro previo indica que Render tenía Supa
 
 ## Inicio local
 
+**Windows:** descarga/clona esta rama y ejecuta `INSTALAR-PIXELLABS.bat`. Después usa `INICIAR-PIXELLABS.bat`, `DETENER-PIXELLABS.bat` y `REPARAR-PIXELLABS.bat`. El perfil local conserva el chatbot/configuración anteriores y no publica ni sube videos. [Guía completa y límites del QA Windows](docs/WINDOWS_INSTALLER.md). Credenciales pendientes: `CONFIGURAR-CREDENCIALES.bat` (entrada oculta solo en tu PC).
+
 ```bash
 npm install
 cp .env.example .env

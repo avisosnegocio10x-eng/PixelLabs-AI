@@ -2,6 +2,8 @@
 
 Usa `.env.example` como referencia. [Lista exacta por proveedor](docs/CONTENT_ENGINE_CREDENTIALS.md).
 
+Windows usa archivos privados separados `setup/windows/local.env`, `worker.env`, `n8n.env`; no reemplaza `.env` del chatbot. `SUPABASE_DB_URL` es opcional y exclusiva del instalador para historial/SQL/índices/RLS, nunca para n8n o el worker. [Instalador y credenciales locales](docs/WINDOWS_INSTALLER.md).
+
 ## Obligatorias
 
 - `ADMIN_API_TOKEN`: secreto largo para el API del panel.

@@ -2,6 +2,8 @@
 
 Los nombres coinciden con `.env.example`, `n8n/local/config.example.env` y el código. Introducir secretos en variables seguras del backend/PC, nunca en Git, frontend, logs o chat. No activar billing ni crear recursos pagados.
 
+En Windows, `INSTALAR-PIXELLABS.bat` genera los cinco secretos locales sin tocar las credenciales del chatbot. `CONFIGURAR-CREDENCIALES.bat` permite introducir los datos reales con entrada oculta. [Guía del perfil offline](WINDOWS_INSTALLER.md). Para comprobar/aplicar migraciones, `SUPABASE_DB_URL` requiere la contraseña PostgreSQL de **Connect**; la service-role solo permite comprobar la API/Storage.
+
 ## Supabase — proyecto existente Free
 
 - [ ] `SUPABASE_URL`
