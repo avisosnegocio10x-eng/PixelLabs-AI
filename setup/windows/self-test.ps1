@@ -27,6 +27,61 @@ try {
         function Protect-LocalPath { param([string]$Path, [switch]$Directory) }
         Write-Host 'ACL de Windows simuladas en este host; no equivale a instalar en Windows.'
     }
+    $referenceTime = [DateTimeOffset]::Parse('2026-01-14T12:00:00Z', [Globalization.CultureInfo]::InvariantCulture)
+    $freshTime = $referenceTime.AddSeconds(-2)
+    Assert-Test (Test-RecentHeartbeat '2026-01-14T11:59:58Z' $referenceTime) 'Un heartbeat UTC Z reciente se acepta sin mezclar hora local con UTC.'
+    Assert-Test (Test-RecentHeartbeat $freshTime.ToLocalTime().ToString('o') $referenceTime.ToLocalTime()) 'Un heartbeat reciente conserva su edad al representar ambos instantes en hora local.'
+    Assert-Test (Test-RecentHeartbeat $freshTime.ToOffset([TimeSpan]::FromHours(5.5)).ToString('o') $referenceTime) 'Un heartbeat reciente con offset distinto de UTC se acepta por su instante real.'
+    Assert-Test (-not (Test-RecentHeartbeat $referenceTime.AddSeconds(-15).ToString('o') $referenceTime)) 'Un heartbeat de 15 segundos o mas se rechaza como desactualizado.'
+    Assert-Test (-not (Test-RecentHeartbeat 'invalid timestamp' $referenceTime)) 'Un heartbeat con fecha invalida se rechaza.'
+    Assert-Test (-not (Test-RecentHeartbeat $referenceTime.AddSeconds(1).ToString('o') $referenceTime)) 'Un heartbeat futuro no se confunde con un heartbeat reciente.'
+    if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+        function Test-PrivateAcl([string]$Path, [switch]$Directory) {
+            $owner = [Security.Principal.WindowsIdentity]::GetCurrent().User
+            $expected = @($owner.Value, 'S-1-5-18', 'S-1-5-32-544')
+            $acl = (Get-Item -LiteralPath $Path -Force).GetAccessControl()
+            $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+            $identities = @($rules | ForEach-Object { $_.IdentityReference.Value } | Select-Object -Unique)
+            $inheritance = if ($Directory) { [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit' } else { [Security.AccessControl.InheritanceFlags]::None }
+            return $acl.AreAccessRulesProtected -and $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -eq $owner.Value -and
+                $rules.Count -eq 3 -and $identities.Count -eq 3 -and @($rules | Where-Object {
+                    $_.IdentityReference.Value -notin $expected -or $_.FileSystemRights -ne [Security.AccessControl.FileSystemRights]::FullControl -or
+                    $_.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $_.IsInherited -or
+                    $_.InheritanceFlags -ne $inheritance -or $_.PropagationFlags -ne [Security.AccessControl.PropagationFlags]::None
+                }).Count -eq 0
+        }
+        $privateDirectory = Join-Path $script:StateRoot 'acl-repeat'
+        Ensure-PrivateDirectory $privateDirectory
+        Ensure-PrivateDirectory $privateDirectory
+        Assert-Test (Test-PrivateAcl $privateDirectory -Directory) 'Reproteger una carpeta conserva propietario y tres permisos privados sin UAC.'
+        $privateFile = Join-Path $privateDirectory 'repeat.txt'
+        Write-PrivateText $privateFile 'first local value'
+        Write-PrivateText $privateFile 'second local value'
+        Assert-Test ([IO.File]::ReadAllText($privateFile) -ceq 'second local value') 'Write-PrivateText puede crear y reemplazar un archivo ya protegido sin privilegio de auditoria.'
+        Protect-LocalPath $privateFile
+        Protect-LocalPath $privateFile
+        Assert-Test (Test-PrivateAcl $privateFile) 'Reproteger un archivo conserva propietario, ACL privada y herencia bloqueada.'
+        # Match C:\PixelLabs: current owner has Modify, but no WRITE_OWNER.
+        $ownedDirectory = Join-Path $script:StateRoot 'owned-modify'
+        New-Item -ItemType Directory -Path $ownedDirectory -Force | Out-Null
+        $owner = [Security.Principal.WindowsIdentity]::GetCurrent().User
+        $modifyAcl = New-Object Security.AccessControl.DirectorySecurity
+        $modifyAcl.SetAccessRuleProtection($true, $false)
+        $modifyAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($owner, 'Modify',
+            [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit', [Security.AccessControl.PropagationFlags]::None,
+            [Security.AccessControl.AccessControlType]::Allow)))
+        (Get-Item -LiteralPath $ownedDirectory).SetAccessControl($modifyAcl)
+        Protect-LocalPath $ownedDirectory -Directory
+        Assert-Test (Test-PrivateAcl $ownedDirectory -Directory) 'El propietario con Modify protege su carpeta sin requerir WRITE_OWNER.'
+        $ownedFile = Join-Path $ownedDirectory 'owned.txt'
+        New-Item -ItemType File -Path $ownedFile | Out-Null
+        $modifyAcl = New-Object Security.AccessControl.FileSecurity
+        $modifyAcl.SetAccessRuleProtection($true, $false)
+        $modifyAcl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($owner, 'Modify', [Security.AccessControl.AccessControlType]::Allow)))
+        (Get-Item -LiteralPath $ownedFile).SetAccessControl($modifyAcl)
+        Protect-LocalPath $ownedFile
+        Assert-Test (Test-PrivateAcl $ownedFile) 'El propietario con Modify protege su archivo sin cambiar propietario ni ampliar acceso a otros usuarios.'
+    }
     function Invoke-NativeCapture { param([string]$Command, [string[]]$Arguments)
         if ($Command -eq 'docker.exe' -and $Arguments[0] -eq 'volume') { return @{Code=1;Output=''} }
         return @{Code=0;Output=''}
@@ -80,8 +135,9 @@ try {
     $failed = $false; try { Ensure-LocalConfiguration } catch { $failed = $true }
     Assert-Test $failed 'Un volumen existente sin clave no recibe una clave nueva.'
     # Mock OS/tool metadata to exercise detection without installing anything.
-    $script:QaNodeVersion = 'v22.23.3'; $script:QaBuild = '22631'; $script:QaDockerType = 'linux'
+    $script:QaNodeVersion = 'v22.23.3'; $script:QaBuild = '22631'; $script:QaDockerType = 'linux'; $script:QaComposeVersion = 'v2.39.0'
     $script:QaFeatures = 1; $script:QaRestart = $false; $script:QaWinget = $true
+    $script:QaLegacyWslFeature = 1; $script:QaWslVersion = '2.6.0'
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'
     function Refresh-SetupPath { }
     function Get-RebootRequired { return $script:QaRestart }
@@ -94,7 +150,7 @@ try {
             'Win32_OperatingSystem' { return [pscustomobject]@{BuildNumber=$script:QaBuild;ProductType=1;LastBootUpTime=Get-Date} }
             'Win32_ComputerSystem' { return [pscustomobject]@{HypervisorPresent=$true;TotalPhysicalMemory=8GB} }
             'Win32_Processor' { return [pscustomobject]@{VirtualizationFirmwareEnabled=$true;SecondLevelAddressTranslationExtensions=$true} }
-            'Win32_OptionalFeature' { return @([pscustomobject]@{Name='Microsoft-Windows-Subsystem-Linux';InstallState=$script:QaFeatures},
+            'Win32_OptionalFeature' { return @([pscustomobject]@{Name='Microsoft-Windows-Subsystem-Linux';InstallState=$script:QaLegacyWslFeature},
                 [pscustomobject]@{Name='VirtualMachinePlatform';InstallState=$script:QaFeatures}) }
             default { return $null }
         }
@@ -102,12 +158,18 @@ try {
     function Invoke-NativeCapture { param([string]$Command, [string[]]$Arguments)
         $text = '2.0.0'
         if ($Command -eq 'node.exe') { $text = $script:QaNodeVersion }
-        if ($Command -eq 'wsl.exe') { $text = 'WSL version: 2.6.0' }
-        if ($Command -eq 'docker.exe') { $text = if ($Arguments[0] -eq 'compose') { 'v2.39.0' } else { $script:QaDockerType } }
+        if ($Command -eq 'wsl.exe') { $text = "WSL version: $($script:QaWslVersion)" }
+        if ($Command -eq 'docker.exe') { $text = if ($Arguments[0] -eq 'compose') { $script:QaComposeVersion } else { $script:QaDockerType } }
         return @{Code=0;Output=$text}
     }
     $rows = @(Get-DependencyStatus)
     Assert-Test (($rows | Where-Object Name -eq 'Node.js').Status -eq 'OK') 'Node 22 LTS compatible se acepta.'
+    Assert-Test (($rows | Where-Object Name -eq 'Docker Compose').Status -eq 'OK') 'Docker Compose v2 compatible se acepta.'
+    $script:QaComposeVersion = '5.3.1'
+    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Docker Compose').Status -eq 'OK') 'Docker Compose v5 compatible se acepta sin reinstalar Docker.'
+    $script:QaComposeVersion = 'v1.29.2'
+    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Docker Compose').Status -eq 'NEEDS_UPDATE') 'Docker Compose v1 legacy se rechaza.'
+    $script:QaComposeVersion = 'v2.39.0'
     $script:QaNodeVersion = 'v24.19.0'
     Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Node.js').Status -eq 'NEEDS_UPDATE') 'Otra rama Node se detecta sin cambiar dependencias.'
     $script:QaNodeVersion = 'v22.21.0'
@@ -116,8 +178,13 @@ try {
     Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Windows').Status -eq 'NEEDS_UPDATE') 'Windows no soportado se detecta.'
     $script:QaDockerType = 'windows'
     Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Docker').Status -eq 'MISSING') 'Un motor Windows containers no se acepta.'
+    $script:QaLegacyWslFeature = 2; $script:QaWslVersion = '3.0.1'
+    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'WSL2').Status -eq 'OK') 'Store WSL3 funciona con VirtualMachinePlatform sin el componente legacy WSL1.'
     $script:QaFeatures = 2
-    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'WSL2').Status -eq 'MISSING') 'WSL instalado pero componentes desactivados se detecta.'
+    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'WSL2').Status -eq 'MISSING') 'WSL instalado sin VirtualMachinePlatform habilitado se rechaza.'
+    $script:QaFeatures = 1; $script:QaWslVersion = '2.1.4'
+    Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'WSL2').Status -eq 'NEEDS_UPDATE') 'WSL anterior a 2.1.5 no satisface Docker Desktop.'
+    $script:QaWslVersion = '3.0.1'
     $script:QaRestart = $true
     Assert-Test ((@(Get-DependencyStatus) | Where-Object Name -eq 'Reinicio').Status -eq 'NEEDS_RESTART') 'Reinicio pendiente se informa explicitamente.'
     $script:QaWinget = $false

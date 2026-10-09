@@ -54,8 +54,13 @@ function Protect-LocalPath([string]$Path, [switch]$Directory) {
             [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)
         $acl.AddAccessRule($rule)
     }
-    $acl.SetOwner($sid)
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    # The owner may edit the DACL without WRITE_OWNER. Do not require that right
+    # merely to stamp the same owner onto an existing folder under C:\PixelLabs.
+    $currentOwner = $item.GetAccessControl().GetOwner([Security.Principal.SecurityIdentifier])
+    if ($currentOwner.Value -ne $sid.Value) { $acl.SetOwner($sid) }
+    # Persist only modified DACL/owner sections; Set-Acl copies Audit and can require
+    # SeSecurityPrivilege when protecting an already protected file again.
+    $item.SetAccessControl($acl)
 }
 
 function Ensure-PrivateDirectory([string]$Path) {
@@ -259,7 +264,7 @@ function Get-DependencyStatus {
         $engine = Invoke-NativeCapture 'docker.exe' @('info', '--format', '{{.OSType}}')
         Dependency-Row 'Docker' $(if ($engine.Code -eq 0 -and $engine.Output.Trim() -eq 'linux') { 'OK' } else { 'MISSING' }) 'Abre Docker Desktop y usa contenedores Linux.'
         $compose = Invoke-NativeCapture 'docker.exe' @('compose', 'version', '--short')
-        Dependency-Row 'Docker Compose' $(if ($compose.Code -eq 0 -and $compose.Output.Trim() -match '^v?2\.') { 'OK' } else { 'NEEDS_UPDATE' }) 'Se requiere Docker Compose v2.'
+        Dependency-Row 'Docker Compose' $(if ($compose.Code -eq 0 -and $compose.Output.Trim() -match '^v?(?:2|5)\.') { 'OK' } else { 'NEEDS_UPDATE' }) 'Se requiere Docker Compose v2 o v5.'
     } else {
         Dependency-Row 'Docker' 'MISSING' 'Instalar Docker Desktop.'
         Dependency-Row 'Docker Compose' 'MISSING' 'Incluido con Docker Desktop.'
@@ -272,8 +277,9 @@ function Get-DependencyStatus {
     $text = $wsl.Output.Replace([string][char]0, '')
     $ready = $wsl.Code -eq 0 -and $text -match '(\d+\.\d+\.\d+)'
     if ($ready) { $ready = [version]$Matches[1] -ge [version]'2.1.5' }
-    $features = @(Get-CimInstance Win32_OptionalFeature | Where-Object { $_.Name -in @('Microsoft-Windows-Subsystem-Linux', 'VirtualMachinePlatform') })
-    if ($features.Count -ne 2 -or @($features | Where-Object InstallState -ne 1).Count -gt 0) { $ready = $false; $wsl.Code = 127 }
+    # Store WSL2/3 needs VirtualMachinePlatform; the legacy WSL1 component is optional.
+    $features = @(Get-CimInstance Win32_OptionalFeature | Where-Object Name -eq 'VirtualMachinePlatform')
+    if ($features.Count -ne 1 -or @($features | Where-Object InstallState -ne 1).Count -gt 0) { $ready = $false; $wsl.Code = 127 }
     Dependency-Row 'WSL2' $(if ($ready) { 'OK' } elseif ($wsl.Code -eq 0) { 'NEEDS_UPDATE' } else { 'MISSING' }) 'WSL 2.1.5 o posterior; se comprueba tambien el motor Docker.'
     Dependency-Row 'Reinicio' $(if (Get-RebootRequired) { 'NEEDS_RESTART' } else { 'OK' }) 'Estado de Windows y del instalador.'
 }
@@ -514,6 +520,15 @@ function Sync-LocalWorkflows {
     } finally { if (Test-Path -LiteralPath $hostDirectory) { Remove-Item -LiteralPath $hostDirectory -Recurse -Force } }
 }
 
+function Test-RecentHeartbeat([string]$UpdatedAt, [DateTimeOffset]$ReferenceTime = [DateTimeOffset]::UtcNow) {
+    try {
+        # DateTimeOffset subtraction compares instants even when Windows parses Z as local time.
+        $updated = [DateTimeOffset]::Parse($UpdatedAt, [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::AssumeUniversal)
+        $age = ($ReferenceTime - $updated).TotalSeconds
+        return $age -ge 0 -and $age -lt 15
+    } catch { return $false }
+}
 function Get-ManagedWorker {
     $path = Join-Path $script:StateRoot 'worker-process.json'
     if (-not (Test-Path -LiteralPath $path)) { return $null }
@@ -549,7 +564,7 @@ function Start-ManagedWorker([switch]$Paused) {
         if ($current.Code -eq 0 -and (Test-Path -LiteralPath $healthPath)) {
             $health = Get-Content -LiteralPath $healthPath -Raw | ConvertFrom-Json
             $valid = $health.instance -eq $worker.instance -and $health.configuration -eq $current.Output.Trim() -and
-                $health.status -eq 'ready' -and ((Get-Date).ToUniversalTime() - [datetime]$health.updatedAt).TotalSeconds -lt 15
+                $health.status -eq 'ready' -and (Test-RecentHeartbeat $health.updatedAt)
         }
         if (-not $valid) { Stop-ManagedWorker; $worker = $null }
     }
@@ -612,7 +627,7 @@ function Show-LocalStatus {
                     $worker = Get-ManagedWorker
                     $health = Get-Content -LiteralPath (Join-Path $script:StateRoot 'worker-health.json') -Raw | ConvertFrom-Json
                     $ok = $worker -and $health.instance -eq $worker.instance -and $health.status -eq 'ready' -and
-                        ((Get-Date).ToUniversalTime() - [datetime]$health.updatedAt).TotalSeconds -lt 15 -and -not $health.lastError
+                        (Test-RecentHeartbeat $health.updatedAt) -and -not $health.lastError
                 }
                 'FFmpeg' { $a = Invoke-NativeCapture 'ffmpeg.exe' @('-version'); $b = Invoke-NativeCapture 'ffprobe.exe' @('-version'); $ok = $a.Code -eq 0 -and $b.Code -eq 0 }
                 'Docker' { $value = Invoke-NativeCapture 'docker.exe' @('info', '--format', '{{.OSType}}'); $ok = $value.Code -eq 0 -and $value.Output.Trim() -eq 'linux' }
