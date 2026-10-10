@@ -196,6 +196,71 @@ async function cargarCatalogo() {
     }));
 }
 
+function editorialDraftDetails(item) {
+    const metadata = item.metadata || {};
+    const copies = metadata.platformCopies || {};
+    const review = metadata.editorialReview;
+    const correction = metadata.editorialCorrection;
+    if (!Object.keys(copies).length && !review && !correction) return null;
+    const section = document.createElement("section");
+    const names = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
+    const row = (label, value) => {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = `${label}: ${value}`;
+        section.append(paragraph);
+    };
+    const heading = text => {
+        const title = document.createElement("h4");
+        title.textContent = text;
+        section.append(title);
+    };
+    for (const platform of item.platforms || []) {
+        const copy = copies[platform];
+        if (!copy) continue;
+        heading(`Borrador para ${names[platform] || platform}`);
+        row("Título", copy.title || item.title || "Sin título");
+        row("Texto", copy.caption || item.primaryText || "Sin texto principal");
+        row("Llamada a la acción", copy.callToAction || item.callToAction || "Pendiente");
+        row("Hashtags", (copy.hashtags || item.hashtags || []).join(" ") || "Sin hashtags");
+        if (copy.format) row("Formato propuesto", copy.format);
+        if (copy.strategy) row("Estrategia", copy.strategy);
+    }
+    if (review) {
+        heading("Revisión editorial manual: parcial y provisional");
+        if (Number.isFinite(review.score)) row("Puntaje editorial provisional", review.score);
+        row("Validación completa", "Pendiente. Este análisis no sustituye las ocho revisiones ni la aprobación humana.");
+        const labels = { spelling: "Ortografía", commercial: "Claridad comercial", brand: "Marca",
+            originality: "Originalidad", businessPotential: "Potencial comercial",
+            visual: "Imagen", privacy: "Privacidad", technical: "Revisión técnica" };
+        for (const [key, label] of Object.entries(labels)) {
+            const score = review.scores?.[key];
+            row(label, Number.isFinite(score) ? `${score} (provisional)` : "Pendiente de verificar");
+        }
+        const findings = Array.isArray(review.findings) ? review.findings :
+            Object.values(review.findings || {}).flatMap(values => Array.isArray(values) ? values : []);
+        for (const finding of findings) {
+            if (typeof finding === "string") row("Observación editorial", finding);
+        }
+    }
+    if (correction) {
+        heading("Corrección editorial manual");
+        if (correction.reason) row("Motivo", correction.reason);
+        const snapshot = value => typeof value === "string" ? value : value?.caption || value?.primaryText;
+        if (snapshot(correction.before)) row("Texto anterior", snapshot(correction.before));
+        if (snapshot(correction.after)) row("Texto corregido", snapshot(correction.after));
+    }
+    if (item.humanApprovalRequired !== false && metadata.manuallyApproved !== true) {
+        row("Estado editorial", "Pendiente de revisión completa y aprobación humana.");
+    }
+    for (const suggestion of Array.isArray(metadata.suggestedSchedule) ? metadata.suggestedSchedule : []) {
+        const date = new Date(suggestion.scheduledFor);
+        const time = Number.isNaN(date.getTime()) ? suggestion.localTime || "Pendiente" :
+            date.toLocaleString("es-SV", { timeZone: state.settings?.timezone || "America/El_Salvador" });
+        row(`Horario sugerido para ${names[suggestion.platform] || suggestion.platform}`, `${time} · Propuesta sin programar`);
+    }
+    return section;
+}
+
 async function cargarAprobaciones() {
     const data = await apiFetch("/admin/api/content-engine/content");
     const list = byId("approvalList");
@@ -219,6 +284,8 @@ async function cargarAprobaciones() {
             } catch { details.append(emptyState("Vista previa no disponible. Revisa el recurso antes de aprobar.")); }
         }
         if (!item.metadata.mediaAssetIds?.length) details.append(emptyState("Falta una foto o un video real del producto."));
+        const editorial = editorialDraftDetails(item);
+        if (editorial) details.append(editorial);
         const scheduleTime = document.createElement("input");
         scheduleTime.type = "datetime-local";
         const nextTime = item.metadata.plannedFor && Date.parse(item.metadata.plannedFor) > Date.now()
