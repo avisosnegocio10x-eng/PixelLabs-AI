@@ -152,44 +152,120 @@ end $pixellabs_check$;\ncommit;\n`;
     return sql;
 }
 
+const postgresCaTarget = "/run/pixellabs/supabase-ca.crt";
+const defaultPostgresCaPath = path.join(__dirname, "state", "certificates", "supabase-ca.crt");
+
 function parseDatabaseUrl(value) {
-    const url = new URL(value);
-    if (!["postgres:", "postgresql:"].includes(url.protocol) || url.searchParams.get("sslmode") === "disable" ||
+    let url;
+    try {
+        if (typeof value !== "string" || /[\r\n\0]/.test(value)) throw new Error();
+        url = new URL(value);
+    } catch { throw new Error("POSTGRES_URL_INVALID"); }
+    if (!["postgres:", "postgresql:"].includes(url.protocol) || url.searchParams.getAll("sslmode").includes("disable") ||
         !/(?:^localhost$|^127\.0\.0\.1$|\.(?:supabase\.co|supabase\.com|supabase\.in|supabase\.red)$)/i.test(url.hostname))
-        throw new Error("SUPABASE_DB_URL debe usar un host oficial Supabase y TLS, o PostgreSQL local.");
-    const variables = { PGHOST: url.hostname, PGPORT: url.port || "5432", PGDATABASE: decodeURIComponent(url.pathname.slice(1) || "postgres"),
-        PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password), PGCONNECT_TIMEOUT: "15",
-        PGSSLMODE: ["localhost", "127.0.0.1"].includes(url.hostname) ? "prefer" : "verify-full",
-        PGSSLROOTCERT: "/etc/ssl/certs/ca-certificates.crt" };
-    if (!variables.PGUSER || !variables.PGPASSWORD || Object.values(variables).some(v => /[\r\n]/.test(v))) throw new Error("Conexion PostgreSQL incompleta.");
-    // Docker's localhost refers to its own container; use the Desktop host bridge.
-    if (["localhost", "127.0.0.1"].includes(variables.PGHOST)) variables.PGHOST = "host.docker.internal";
+        throw new Error("POSTGRES_URL_UNTRUSTED");
+    const local = ["localhost", "127.0.0.1"].includes(url.hostname);
+    let variables;
+    try {
+        variables = { PGHOST: url.hostname, PGPORT: url.port || "5432", PGDATABASE: decodeURIComponent(url.pathname.slice(1) || "postgres"),
+            PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password), PGCONNECT_TIMEOUT: "15",
+            PGSSLMODE: local ? "prefer" : "verify-full" };
+    } catch { throw new Error("POSTGRES_URL_INVALID"); }
+    if (!variables.PGUSER || !variables.PGPASSWORD || Object.values(variables).some(v => /[\r\n\0]/.test(v)))
+        throw new Error("POSTGRES_URL_INCOMPLETE");
+    if (local) variables.PGHOST = "host.docker.internal";
+    else variables.PGSSLROOTCERT = postgresCaTarget;
     return variables;
 }
 
-async function withPostgres(value, callback) {
+function validatePostgresCa(caPath) {
+    let resolved, descriptor;
+    try {
+        if (typeof caPath !== "string" || /[,\r\n\0]/.test(caPath)) throw new Error();
+        resolved = path.resolve(caPath);
+        // Reject links in both the file and its parent directories (Windows junctions included).
+        for (let current = resolved; ; current = path.dirname(current)) {
+            if (fs.lstatSync(current).isSymbolicLink()) throw new Error();
+            if (current === path.dirname(current)) break;
+        }
+        const stat = fs.lstatSync(resolved);
+        if (!stat.isFile() || stat.size === 0 || stat.size > 64 * 1024) throw new Error();
+        descriptor = fs.openSync(resolved, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+        const opened = fs.fstatSync(descriptor);
+        if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino) throw new Error();
+        const pem = fs.readFileSync(descriptor, "utf8").trim();
+        if (!/^-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----$/.test(pem)) throw new Error();
+        const certificate = new crypto.X509Certificate(pem);
+        if (!certificate.ca) throw new Error();
+        const validFrom = Date.parse(certificate.validFrom), validTo = Date.parse(certificate.validTo);
+        if (!Number.isFinite(validFrom) || !Number.isFinite(validTo)) throw new Error();
+        const now = Date.now();
+        if (now < validFrom) throw new Error("POSTGRES_CA_NOT_YET_VALID");
+        if (now >= validTo) throw new Error("POSTGRES_CA_EXPIRED");
+        return resolved;
+    } catch (error) {
+        if (["POSTGRES_CA_EXPIRED", "POSTGRES_CA_NOT_YET_VALID"].includes(error.message)) throw new Error(error.message);
+        throw new Error(error.code === "ENOENT" ? "POSTGRES_CA_MISSING" : "POSTGRES_CA_INVALID");
+    } finally {
+        if (descriptor !== undefined) {
+            try { fs.closeSync(descriptor); } catch { /* Do not expose filesystem diagnostics. */ }
+        }
+    }
+}
+
+function postgresDockerArgs(variables, name, caPath) {
+    const args = ["run", "--rm", "--log-driver", "none", "--name", name];
+    if (variables.PGSSLROOTCERT) args.push("--mount", `type=bind,source=${caPath},target=${postgresCaTarget},readonly`);
+    for (const key of Object.keys(variables)) if (key !== "PGPASSWORD") args.push("--env", key);
+    return [...args, "-i", "postgres:17-bookworm", "psql", "-X", "-q", "-A", "-t", "-W", "-v", "ON_ERROR_STOP=1", "-f", "-"];
+}
+
+async function withPostgres(value, callback, { caPath = defaultPostgresCaPath, spawnImpl = spawn } = {}) {
     const variables = parseDatabaseUrl(value);
-    const envPath = path.join(__dirname, "state", `postgres-${crypto.randomUUID()}.env`);
-    // state/ ACL is already restricted by PowerShell before this file is created.
-    fs.writeFileSync(envPath, Object.entries(variables).map(([key, val]) => `${key}=${val}`).join("\n"), { mode: 0o600, flag: "wx" });
+    const certificatePath = variables.PGSSLROOTCERT ? validatePostgresCa(caPath) : undefined;
+    const { PGPASSWORD: password, ...connectionEnvironment } = variables;
+    // Passwords reach psql's non-TTY prompt through stdin, never Docker Config.Env, argv or a file.
+    const dockerEnvironment = {};
+    for (const [key, val] of Object.entries(process.env))
+        if (/^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|DOCKER_HOST|DOCKER_CONTEXT|DOCKER_CONFIG|DOCKER_TLS_VERIFY|DOCKER_CERT_PATH|SSH_AUTH_SOCK)$/i.test(key))
+            dockerEnvironment[key] = val;
+    const environment = { ...dockerEnvironment, ...connectionEnvironment };
+    const binary = process.platform === "win32" ? "docker.exe" : "docker";
     const execute = sql => new Promise((resolve, reject) => {
         const name = `pixellabs-db-${crypto.randomUUID()}`;
-        const binary = process.platform === "win32" ? "docker.exe" : "docker";
-        const child = spawn(binary, ["run", "--rm", "--name", name, "--env-file", envPath, "-i", "postgres:17-bookworm",
-            "psql", "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-f", "-"], { stdio: ["pipe", "pipe", "pipe"] });
-        let output = "";
-        child.stdout.on("data", chunk => { output += chunk; if (output.length > 4 * 1024 * 1024) child.kill(); });
-        child.stderr.on("data", () => {}); // Never forward database/URL/password errors.
-        const timer = setTimeout(() => {
-            spawn(binary, ["stop", "--time", "3", name], { stdio: "ignore" }).unref();
-            child.kill();
-        }, 180000);
+        let child;
+        try {
+            child = spawnImpl(binary, postgresDockerArgs(variables, name, certificatePath),
+                { env: environment, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+        } catch { reject(new Error("POSTGRES_CLIENT_UNAVAILABLE")); return; }
+        let output = "", completed = false;
+        const finish = (error, result) => {
+            if (completed) return;
+            completed = true;
+            clearTimeout(timer);
+            error ? reject(new Error(error)) : resolve(result);
+        };
+        const stop = () => {
+            try {
+                const cleanup = spawnImpl(binary, ["stop", "--time", "3", name], { env: dockerEnvironment, windowsHide: true, stdio: "ignore" });
+                cleanup.once("error", () => {});
+                cleanup.unref();
+            } catch { /* Only return controlled client errors. */ }
+            try { child.kill(); } catch { /* Only return controlled client errors. */ }
+        };
+        const timer = setTimeout(() => { stop(); finish("POSTGRES_CHECK_TIMEOUT"); }, 180000);
+        child.stdout.on("data", chunk => {
+            output += chunk;
+            if (output.length > 4 * 1024 * 1024) { stop(); finish("POSTGRES_OUTPUT_LIMIT"); }
+        });
+        child.stderr.on("data", () => {}); // Never forward database/URL/password errors or the password prompt.
         child.stdin.on("error", () => {});
-        child.once("error", () => { clearTimeout(timer); reject(new Error("POSTGRES_CLIENT_UNAVAILABLE")); });
-        child.once("exit", code => { clearTimeout(timer); code === 0 ? resolve(output.trim()) : reject(new Error("POSTGRES_CHECK_FAILED")); });
-        child.stdin.end(sql);
+        child.once("error", () => finish("POSTGRES_CLIENT_UNAVAILABLE"));
+        child.once("close", code => code === 0 ? finish(null, output.trim()) : finish("POSTGRES_CHECK_FAILED"));
+        try { child.stdin.end(`${password}\n${sql}`); }
+        catch { stop(); finish("POSTGRES_CHECK_FAILED"); }
     });
-    try { return await callback(execute); } finally { fs.rmSync(envPath, { force: true }); }
+    return callback(execute);
 }
 
 async function verifyAndMigrate(environment, execute) {
@@ -211,4 +287,4 @@ async function verifyAndMigrate(environment, execute) {
         tables: new Set(migrations.flatMap(m => m.tables)).size, rls: "OK", indexes: "OK", storage: "OK" };
 }
 module.exports = { snapshotSql, migrationContracts, contractProblems, planMigrations, buildMigrationSql, parseDatabaseUrl,
-    withPostgres, verifyAndMigrate };
+    validatePostgresCa, postgresDockerArgs, withPostgres, verifyAndMigrate };

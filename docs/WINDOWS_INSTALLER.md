@@ -59,12 +59,16 @@ El modo offline funciona sin proveedores. **ACTION REQUIRED** indica una conexi�
 | Proveedor | Datos reales necesarios | Dónde |
 |---|---|---|
 | Supabase existente Free | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Settings > API |
-| PostgreSQL de ese proyecto | `SUPABASE_DB_URL`, con contraseña de base de datos codificada como URL | Connect; usa el pooler si tu PC no tiene IPv6 |
+| PostgreSQL de ese proyecto | `SUPABASE_DB_URL`, con contraseña de base de datos codificada como URL | Connect > Session pooler, puerto `5432`, compatible con IPv4 |
 | Gemini sin billing | `GEMINI_API_KEY` | Google AI Studio > API keys |
 | Meta | `META_APP_ID`, `META_APP_SECRET`, `FACEBOOK_PAGE_ID`, versión Graph API | Meta Developers y la Página propia |
 | TikTok | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` | TikTok Developers > Manage apps |
 
-Las dos credenciales REST de Supabase permiten comprobar tablas/columnas/settings/bucket con el verificador existente. **No permiten verificar índices/RLS/historial ni ejecutar SQL**. Con `SUPABASE_DB_URL`, un cliente PostgreSQL oficial efímero en Docker comprueba el esquema y aplica solo pendientes bajo transacción y lock. La contraseña va en un archivo temporal privado; nunca en argumentos/logs. TLS verifica el certificado del servidor.
+Antes de comprobar PostgreSQL remoto, descarga el certificado CA del proyecto desde Supabase > Database Settings > SSL Configuration. Guárdalo como `setup/windows/state/certificates/supabase-ca.crt` dentro de la instalación. Usa la carpeta privada creada por el instalador: `state/` está ignorada por Git y permite acceso únicamente al propietario, SYSTEM y Administradores. Nunca añadas el certificado descargado al repositorio ni copies una clave privada. Si la CA falta, está caducada, es inválida o su ruta atraviesa un enlace, el cliente se detiene antes de conectar.
+
+El cliente monta ese archivo de solo lectura en `/run/pixellabs/supabase-ca.crt`, configura `PGSSLROOTCERT` con esa ruta dentro del contenedor y exige `PGSSLMODE=verify-full` para Supabase. No depende del bundle del sistema de la imagen PostgreSQL y no rebaja la verificación TLS. La contraseña se entrega al prompt de `psql` por la entrada estándar; no se escribe en archivos temporales, argumentos, variables del contenedor ni logs. El contenedor efímero desactiva su log driver.
+
+Las dos credenciales REST de Supabase permiten comprobar tablas/columnas/settings/bucket con el verificador existente. **No permiten verificar índices/RLS/historial ni ejecutar SQL**. Con `SUPABASE_DB_URL`, un cliente PostgreSQL oficial efímero en Docker comprueba el esquema y aplica solo pendientes bajo transacción y lock. **INSTALAR y REPARAR pueden aplicar migraciones**: no los ejecutes durante una fase que autorice únicamente diagnóstico o lectura. Una conexión TLS correcta tampoco confirma la contraseña: la autenticación debe verificarse antes de revisar el estado remoto o planificar migraciones.
 
 Un esquema legacy sin historial solo se reconoce si cumple el contrato completo de las cinco migraciones existentes. Un esquema parcial, una clave/hash cambiada o una migración parcialmente aplicada sin registro requieren revisión; no se reaplican a ciegas. El registro privado `pixellabs_setup.schema_migrations` documenta hashes, sin sustituir el historial Supabase existente. No se crea un proyecto, se habilita Pro/billing ni se publica Storage. Un fallo al validar la seguridad o la conexión impide declarar instalación completada.
 
