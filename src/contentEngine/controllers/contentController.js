@@ -41,7 +41,10 @@ const reviewSchema = z.object({
 }).strict();
 const rejectSchema = z.object({ reason: z.string().min(3).max(1000) }).strict();
 const editSchema = draftSchema.pick({ title: true, primaryText: true, callToAction: true, hashtags: true })
-    .partial().extend({ mediaAssetIds: z.array(z.string().uuid()).max(10).optional() }).strict();
+    .partial().extend({
+        hashtags: z.array(z.string().max(100)).max(30).optional(),
+        mediaAssetIds: z.array(z.string().uuid()).max(10).optional()
+    }).strict();
 
 function invalid(res, error) {
     if (!(error instanceof ZodError)) return false;

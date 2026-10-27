@@ -173,10 +173,28 @@ class ContentLifecycleService {
         if (["PUBLISHED", "ARCHIVED"].includes(item.status)) {
             throw Object.assign(new Error("CONTENT_NOT_EDITABLE"), { code: "CONTENT_NOT_EDITABLE", statusCode: 409 });
         }
-        const metadata = { ...item.metadata, manuallyApproved: false, approvalFingerprint: null,
-            platformCopies: {}, autoPublish: false };
-        if (changes.mediaAssetIds) metadata.mediaAssetIds = changes.mediaAssetIds;
         const { mediaAssetIds, ...copyChanges } = changes;
+        const hasMediaChange = Array.isArray(mediaAssetIds);
+        const hasCopyChange = Object.keys(copyChanges).length > 0;
+        const mediaOnlyChange = hasMediaChange && Object.keys(changes).length === 1;
+        const metadata = { ...item.metadata, manuallyApproved: false, approvalFingerprint: null,
+            platformCopies: mediaOnlyChange ? item.metadata.platformCopies || {} : {},
+            pendingHumanApproval: true, autoPublish: false };
+        if (item.metadata.aiPreparation) {
+            metadata.aiPreparation = { ...item.metadata.aiPreparation, fullReviewComplete: false };
+            if (hasMediaChange) metadata.aiPreparation.reviewStaleAfterMediaChange = true;
+            if (hasCopyChange) metadata.aiPreparation.reviewStaleAfterCorrection = true;
+            if (hasMediaChange || hasCopyChange) {
+                metadata.aiPreparation.platformResults = Object.fromEntries(
+                    Object.entries(item.metadata.aiPreparation.platformResults || {}).map(([platform, result]) => [platform, {
+                        ...result,
+                        ...(hasMediaChange ? { reviewStaleAfterMediaChange: true } : {}),
+                        ...(hasCopyChange ? { reviewStaleAfterCorrection: true } : {})
+                    }])
+                );
+            }
+        }
+        if (hasMediaChange) metadata.mediaAssetIds = mediaAssetIds;
         const updated = await this.repository.compareAndUpdate(item, {
             ...copyChanges, status: "DRAFT", approvedAt: null,
             reviewPasses: 0, overallScore: null, humanApprovalRequired: true, metadata

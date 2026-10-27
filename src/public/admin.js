@@ -205,9 +205,11 @@ function editorialDraftDetails(item) {
     const platforms = ["facebook", "instagram", "tiktok"];
     const hasAiResults = aiResults && typeof aiResults === "object" && !Array.isArray(aiResults) &&
         platforms.some(platform => aiResults[platform] && typeof aiResults[platform] === "object" && !Array.isArray(aiResults[platform]));
+    const mediaReviewStale = metadata.aiPreparation?.reviewStaleAfterMediaChange === true ||
+        (hasAiResults && platforms.some(platform => aiResults[platform]?.reviewStaleAfterMediaChange === true));
     const historicalReview = hasAiResults || review?.historical === true || review?.appliesToCurrentCopy === false;
     const historicalCorrection = hasAiResults || correction?.historical === true;
-    if (!Object.keys(copies).length && !review && !correction && !hasAiResults) return null;
+    if (!Object.keys(copies).length && !review && !correction && !hasAiResults && !mediaReviewStale) return null;
     const section = document.createElement("section");
     const names = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
     const row = (label, value) => {
@@ -220,6 +222,9 @@ function editorialDraftDetails(item) {
         title.textContent = text;
         section.append(title);
     };
+    if (mediaReviewStale) {
+        row("Medio pendiente de nueva revisión", "La foto o el video cambió después de esta revisión; deben repetirse las comprobaciones de imagen, privacidad y archivo.");
+    }
     for (const platform of item.platforms || []) {
         const copy = copies[platform];
         if (!copy) continue;
