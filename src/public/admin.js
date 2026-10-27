@@ -201,7 +201,13 @@ function editorialDraftDetails(item) {
     const copies = metadata.platformCopies || {};
     const review = metadata.editorialReview;
     const correction = metadata.editorialCorrection;
-    if (!Object.keys(copies).length && !review && !correction) return null;
+    const aiResults = metadata.aiPreparation?.platformResults;
+    const platforms = ["facebook", "instagram", "tiktok"];
+    const hasAiResults = aiResults && typeof aiResults === "object" && !Array.isArray(aiResults) &&
+        platforms.some(platform => aiResults[platform] && typeof aiResults[platform] === "object" && !Array.isArray(aiResults[platform]));
+    const historicalReview = hasAiResults || review?.historical === true || review?.appliesToCurrentCopy === false;
+    const historicalCorrection = hasAiResults || correction?.historical === true;
+    if (!Object.keys(copies).length && !review && !correction && !hasAiResults) return null;
     const section = document.createElement("section");
     const names = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
     const row = (label, value) => {
@@ -225,25 +231,64 @@ function editorialDraftDetails(item) {
         if (copy.format) row("Formato propuesto", copy.format);
         if (copy.strategy) row("Estrategia", copy.strategy);
     }
+    if (hasAiResults) {
+        heading("Revisión Gemini: parcial, sólo texto y metadatos");
+        row("Alcance", "Puntuaciones provisionales del texto; no validan imágenes, privacidad ni el archivo final y no equivalen a aprobación humana.");
+        const labels = { spelling: "Ortografía", commercial: "Claridad comercial", brand: "Marca",
+            originality: "Originalidad estimada", business_potential: "Potencial comercial estimado" };
+        for (const platform of platforms) {
+            const result = aiResults[platform];
+            if (!result || typeof result !== "object" || Array.isArray(result)) continue;
+            heading(`Gemini · ${names[platform]}`);
+            const stale = result.reviewStaleAfterCorrection === true;
+            if (stale) row("Revisión pendiente", "El texto cambió después de esta revisión; estas puntuaciones no califican la versión corregida.");
+            for (const [key, label] of Object.entries(labels)) {
+                const score = key === "business_potential"
+                    ? result.scores?.business_potential ?? result.scores?.businessPotential
+                    : result.scores?.[key];
+                row(label, Number.isFinite(score) && score >= 0 && score <= 100
+                    ? `${score}/100 (${stale ? "anterior a la corrección" : "provisional"})` : "Pendiente de evaluar");
+                const findings = key === "business_potential"
+                    ? result.findings?.business_potential ?? result.findings?.businessPotential
+                    : result.findings?.[key];
+                for (const finding of Array.isArray(findings) ? findings : []) {
+                    if (typeof finding === "string") row(`Observación de ${names[platform]}`, finding);
+                }
+            }
+            row("Imagen, privacidad y archivo", "Pendientes de revisión humana del medio real; no se muestran puntuaciones de calidad visual o privacidad.");
+            if (result.correction?.status === "HUMAN_REQUIRED") {
+                row("Corrección", "Requiere una persona o un medio autorizado. No se aplicó una corrección automática.");
+            } else if (result.correction?.corrected === true) {
+                row("Corrección", "Se normalizó el texto; necesita una nueva revisión antes de aprobar.");
+            } else if (result.correction?.status === "NOT_REQUIRED") {
+                row("Corrección", "No fue necesaria una corrección de texto en esta revisión parcial.");
+            } else {
+                row("Corrección", "Pendiente de revisión humana.");
+            }
+        }
+    }
     if (review) {
-        heading("Revisión editorial manual: parcial y provisional");
-        if (Number.isFinite(review.score)) row("Puntaje editorial provisional", review.score);
-        row("Validación completa", "Pendiente. Este análisis no sustituye las ocho revisiones ni la aprobación humana.");
+        heading(historicalReview ? "Histórico: revisión manual anterior" : "Revisión editorial manual: parcial y provisional");
+        if (Number.isFinite(review.score)) row(historicalReview ? "Puntaje manual histórico, no actual" : "Puntaje editorial provisional", review.score);
+        row(historicalReview ? "Versión revisada" : "Validación completa", historicalReview
+            ? "Pertenece a la versión manual anterior; no califica la versión actual."
+            : "Pendiente. Este análisis no sustituye las ocho revisiones ni la aprobación humana.");
         const labels = { spelling: "Ortografía", commercial: "Claridad comercial", brand: "Marca",
             originality: "Originalidad", businessPotential: "Potencial comercial",
             visual: "Imagen", privacy: "Privacidad", technical: "Revisión técnica" };
         for (const [key, label] of Object.entries(labels)) {
             const score = review.scores?.[key];
-            row(label, Number.isFinite(score) ? `${score} (provisional)` : "Pendiente de verificar");
+            row(label, Number.isFinite(score) ? `${score} (${historicalReview ? "histórico, no actual" : "provisional"})`
+                : historicalReview ? "Sin evaluar en esa revisión" : "Pendiente de verificar");
         }
         const findings = Array.isArray(review.findings) ? review.findings :
             Object.values(review.findings || {}).flatMap(values => Array.isArray(values) ? values : []);
         for (const finding of findings) {
-            if (typeof finding === "string") row("Observación editorial", finding);
+            if (typeof finding === "string") row(historicalReview ? "Observación histórica" : "Observación editorial", finding);
         }
     }
     if (correction) {
-        heading("Corrección editorial manual");
+        heading(historicalCorrection ? "Histórico: corrección manual anterior" : "Corrección editorial manual");
         if (correction.reason) row("Motivo", correction.reason);
         const snapshot = value => typeof value === "string" ? value : value?.caption || value?.primaryText;
         if (snapshot(correction.before)) row("Texto anterior", snapshot(correction.before));
